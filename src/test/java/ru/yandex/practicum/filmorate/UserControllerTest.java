@@ -39,7 +39,7 @@ public class UserControllerTest {
         user.setName("Tom");
         user.setBirthday("1990-11-07");
 
-        Exception e = assertThrows(ValidationException.class, () ->{
+        Exception e = assertThrows(ValidationException.class, () -> {
             userController.addUser(user);
         });
         assertEquals("Email не может быть пустым", e.getMessage());
@@ -53,7 +53,7 @@ public class UserControllerTest {
         user.setName("Tom");
         user.setBirthday("1990-11-07");
 
-        Exception e = assertThrows(ValidationException.class, () ->{
+        Exception e = assertThrows(ValidationException.class, () -> {
             userController.addUser(user);
         });
         assertEquals("Email должен содержать символ '@'", e.getMessage());
@@ -82,7 +82,7 @@ public class UserControllerTest {
         user.setName("Tom");
         user.setBirthday("1990-11-07");
 
-        Exception e = assertThrows(ValidationException.class, () ->{
+        Exception e = assertThrows(ValidationException.class, () -> {
             userController.addUser(user);
         });
         assertEquals("Логин не должен содержать пробелы", e.getMessage());
@@ -95,7 +95,7 @@ public class UserControllerTest {
         user.setName("Tom");
         user.setBirthday("1990-11-07");
 
-        Exception e = assertThrows(ValidationException.class, () ->{
+        Exception e = assertThrows(ValidationException.class, () -> {
             userController.addUser(user);
         });
         assertEquals("Логин не может быть пустым", e.getMessage());
@@ -108,7 +108,7 @@ public class UserControllerTest {
         user.setLogin("login");
         user.setName("Tom");
 
-        Exception e = assertThrows(ValidationException.class, () ->{
+        Exception e = assertThrows(ValidationException.class, () -> {
             userController.addUser(user);
         });
         assertEquals("Дата рождения не может быть пустой", e.getMessage());
@@ -125,7 +125,7 @@ public class UserControllerTest {
                 .plusMonths(1)
                 .toString());
 
-        Exception e = assertThrows(ValidationException.class, () ->{
+        Exception e = assertThrows(ValidationException.class, () -> {
             userController.addUser(user);
         });
         assertEquals("Дата рождения не может быть в будущем", e.getMessage());

@@ -38,7 +38,7 @@ public class FilmControllerTest {
         film.setReleaseDate("2009-05-13");
         film.setDuration(96);
 
-        Exception e = assertThrows(ValidationException.class,() ->{
+        Exception e = assertThrows(ValidationException.class, () -> {
             filmController.addFilm(film);
         });
         assertEquals("Название фильма не может быть пустым", e.getMessage());
@@ -52,7 +52,7 @@ public class FilmControllerTest {
         film.setReleaseDate("2009-05-13");
         film.setDuration(96);
 
-        Exception e = assertThrows(ValidationException.class,() ->{
+        Exception e = assertThrows(ValidationException.class, () -> {
             filmController.addFilm(film);
         });
         assertEquals("Название фильма не может быть пустым", e.getMessage());
@@ -66,7 +66,7 @@ public class FilmControllerTest {
         film.setReleaseDate("2009-05-13");
         film.setDuration(96);
 
-        Exception e = assertThrows(ValidationException.class,() ->{
+        Exception e = assertThrows(ValidationException.class, () -> {
             filmController.addFilm(film);
         });
         assertEquals("Описание фильма не может быть пустым", e.getMessage());
@@ -84,7 +84,7 @@ public class FilmControllerTest {
         film.setReleaseDate("2009-05-13");
         film.setDuration(96);
 
-        Exception e = assertThrows(ValidationException.class,() ->{
+        Exception e = assertThrows(ValidationException.class, () -> {
             filmController.addFilm(film);
         });
         assertEquals("Превышена максимальная длина описания", e.getMessage());
@@ -98,7 +98,7 @@ public class FilmControllerTest {
         film.setReleaseDate("1894-05-13");
         film.setDuration(96);
 
-        Exception e = assertThrows(ValidationException.class,() ->{
+        Exception e = assertThrows(ValidationException.class, () -> {
             filmController.addFilm(film);
         });
         assertEquals("Дата выхода фильма не может быть раньше " + MIN_RELEASE_DATE, e.getMessage());
@@ -112,7 +112,7 @@ public class FilmControllerTest {
         film.setReleaseDate("2009-05-13");
         film.setDuration(0);
 
-        Exception e = assertThrows(ValidationException.class,() ->{
+        Exception e = assertThrows(ValidationException.class, () -> {
             filmController.addFilm(film);
         });
         assertEquals("Продолжительность фильма не может быть пустой", e.getMessage());
@@ -126,7 +126,7 @@ public class FilmControllerTest {
         film.setReleaseDate("2009-05-13");
         film.setDuration(-100);
 
-        Exception e = assertThrows(ValidationException.class,() ->{
+        Exception e = assertThrows(ValidationException.class, () -> {
             filmController.addFilm(film);
         });
         assertEquals("Продолжительность фильма не может быть отрицательной", e.getMessage());
