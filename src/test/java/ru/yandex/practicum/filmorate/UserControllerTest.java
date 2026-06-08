@@ -1,9 +1,8 @@
 package ru.yandex.practicum.filmorate;
 
-import jakarta.validation.ConstraintViolation;
-import jakarta.validation.Validation;
-import jakarta.validation.Validator;
-import jakarta.validation.ValidatorFactory;
+import jakarta.validation.*;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -11,10 +10,9 @@ import ru.yandex.practicum.filmorate.controller.UserController;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.User;
 
+import java.lang.annotation.Annotation;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -62,8 +60,8 @@ public class UserControllerTest {
         user.setBirthday("1990-11-07");
 
         Set<ConstraintViolation<User>> violations = validator.validate(user);
-        List<String> textError = getTextError(violations);
-        assertEquals("email не должно быть пустым", textError.getFirst() + " " + textError.getLast());
+        assertEquals("email", getPropertyPath(violations));
+        assertEquals(NotBlank.class, getType(violations));
     }
 
     @Test
@@ -75,9 +73,8 @@ public class UserControllerTest {
         user.setBirthday("1990-11-07");
 
         Set<ConstraintViolation<User>> violations = validator.validate(user);
-        List<String> textError = getTextError(violations);
-        assertEquals("email должно иметь формат адреса электронной почты",
-                textError.getFirst() + " " + textError.getLast());
+        assertEquals("email", getPropertyPath(violations));
+        assertEquals(Email.class, getType(violations));
     }
 
     @Test
@@ -117,8 +114,8 @@ public class UserControllerTest {
         user.setBirthday("1990-11-07");
 
         Set<ConstraintViolation<User>> violations = validator.validate(user);
-        List<String> textError = getTextError(violations);
-        assertEquals("login не должно быть пустым", textError.getFirst() + " " + textError.getLast());
+        assertEquals("login", getPropertyPath(violations));
+        assertEquals(NotBlank.class, getType(violations));
     }
 
     @Test
@@ -129,8 +126,8 @@ public class UserControllerTest {
         user.setName("Tom");
 
         Set<ConstraintViolation<User>> violations = validator.validate(user);
-        List<String> textError = getTextError(violations);
-        assertEquals("birthday не должно быть пустым", textError.getFirst() + " " + textError.getLast());
+        assertEquals("birthday", getPropertyPath(violations));
+        assertEquals(NotBlank.class, getType(violations));
     }
 
     @Test
@@ -150,16 +147,19 @@ public class UserControllerTest {
         assertEquals("Дата рождения не может быть в будущем", e.getMessage());
     }
 
-    private List<String> getTextError(Set<ConstraintViolation<User>> violations) {
-        List<String> textError = new ArrayList<>();
+    private String getPropertyPath(Set<ConstraintViolation<User>> violations) {
         String field = "";
-        String message = "";
         for (ConstraintViolation<User> violation : violations) {
             field = violation.getPropertyPath().toString();
-            textError.add(field);
-            message = violation.getMessage();
-            textError.add(message);
         }
-        return textError;
+        return field;
+    }
+
+    private Class<? extends Annotation> getType(Set<ConstraintViolation<User>> violations) {
+        Class<? extends Annotation> type = null;
+        for (ConstraintViolation<User> violation : violations) {
+            type = violation.getConstraintDescriptor().getAnnotation().annotationType();
+        }
+        return type;
     }
 }

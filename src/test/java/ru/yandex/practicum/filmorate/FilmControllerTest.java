@@ -4,6 +4,8 @@ import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 import jakarta.validation.ValidatorFactory;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Positive;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -11,9 +13,8 @@ import ru.yandex.practicum.filmorate.controller.FilmController;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.Film;
 
+import java.lang.annotation.Annotation;
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -61,8 +62,8 @@ public class FilmControllerTest {
         film.setDuration(96);
 
         Set<ConstraintViolation<Film>> violations = validator.validate(film);
-        List<String> textError = getTextError(violations);
-        assertEquals("name не должно быть пустым", textError.getFirst() + " " + textError.getLast());
+        assertEquals("name", getPropertyPath(violations));
+        assertEquals(NotBlank.class, getType(violations));
     }
 
     @Test
@@ -74,8 +75,8 @@ public class FilmControllerTest {
         film.setDuration(96);
 
         Set<ConstraintViolation<Film>> violations = validator.validate(film);
-        List<String> textError = getTextError(violations);
-        assertEquals("name не должно быть пустым", textError.getFirst() + " " + textError.getLast());
+        assertEquals("name", getPropertyPath(violations));
+        assertEquals(NotBlank.class, getType(violations));
     }
 
     @Test
@@ -87,9 +88,8 @@ public class FilmControllerTest {
         film.setDuration(96);
 
         Set<ConstraintViolation<Film>> violations = validator.validate(film);
-        List<String> textError = getTextError(violations);
-        assertEquals("description не должно быть пустым",
-                textError.getFirst() + " " + textError.getLast());
+        assertEquals("description", getPropertyPath(violations));
+        assertEquals(NotBlank.class, getType(violations));
     }
 
     @Test
@@ -147,20 +147,23 @@ public class FilmControllerTest {
         film.setDuration(-100);
 
         Set<ConstraintViolation<Film>> violations = validator.validate(film);
-        List<String> textError = getTextError(violations);
-        assertEquals("duration должно быть больше 0", textError.getFirst() + " " + textError.getLast());
+        assertEquals("duration", getPropertyPath(violations));
+        assertEquals(Positive.class, getType(violations));
     }
 
-    private List<String> getTextError(Set<ConstraintViolation<Film>> violations) {
-        List<String> textError = new ArrayList<>();
+    private String getPropertyPath(Set<ConstraintViolation<Film>> violations) {
         String field = "";
-        String message = "";
         for (ConstraintViolation<Film> violation : violations) {
             field = violation.getPropertyPath().toString();
-            textError.add(field);
-            message = violation.getMessage();
-            textError.add(message);
         }
-        return textError;
+        return field;
+    }
+
+    private Class<? extends Annotation> getType(Set<ConstraintViolation<Film>> violations) {
+        Class<? extends Annotation> type = null;
+        for (ConstraintViolation<Film> violation : violations) {
+            type = violation.getConstraintDescriptor().getAnnotation().annotationType();
+        }
+        return type;
     }
 }
