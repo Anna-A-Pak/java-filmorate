@@ -1,11 +1,20 @@
 package ru.yandex.practicum.filmorate;
 
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.Validation;
+import jakarta.validation.Validator;
+import jakarta.validation.ValidatorFactory;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import ru.yandex.practicum.filmorate.controller.FilmController;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.Film;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -13,7 +22,20 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 public class FilmControllerTest {
 
     private final FilmController filmController = new FilmController();
-    public static final LocalDate MIN_RELEASE_DATE = LocalDate.parse("1895-12-28");
+    private static final LocalDate MIN_RELEASE_DATE = LocalDate.parse("1895-12-28");
+    private static ValidatorFactory validatorFactory;
+    private static Validator validator;
+
+    @BeforeAll
+    static void setUp() {
+        validatorFactory = Validation.buildDefaultValidatorFactory();
+        validator = validatorFactory.getValidator();
+    }
+
+    @AfterAll
+    static void closeValidatorFactory() {
+        validatorFactory.close();
+    }
 
     @Test
     void shouldAddFilmWhenAllFieldsAreCorrect() {
@@ -38,10 +60,9 @@ public class FilmControllerTest {
         film.setReleaseDate("2009-05-13");
         film.setDuration(96);
 
-        Exception e = assertThrows(ValidationException.class, () -> {
-            filmController.addFilm(film);
-        });
-        assertEquals("Название фильма не может быть пустым", e.getMessage());
+        Set<ConstraintViolation<Film>> violations = validator.validate(film);
+        List<String> textError = getTextError(violations);
+        assertEquals("name не должно быть пустым", textError.getFirst() + " " + textError.getLast());
     }
 
     @Test
@@ -52,10 +73,9 @@ public class FilmControllerTest {
         film.setReleaseDate("2009-05-13");
         film.setDuration(96);
 
-        Exception e = assertThrows(ValidationException.class, () -> {
-            filmController.addFilm(film);
-        });
-        assertEquals("Название фильма не может быть пустым", e.getMessage());
+        Set<ConstraintViolation<Film>> violations = validator.validate(film);
+        List<String> textError = getTextError(violations);
+        assertEquals("name не должно быть пустым", textError.getFirst() + " " + textError.getLast());
     }
 
     @Test
@@ -66,10 +86,10 @@ public class FilmControllerTest {
         film.setReleaseDate("2009-05-13");
         film.setDuration(96);
 
-        Exception e = assertThrows(ValidationException.class, () -> {
-            filmController.addFilm(film);
-        });
-        assertEquals("Описание фильма не может быть пустым", e.getMessage());
+        Set<ConstraintViolation<Film>> violations = validator.validate(film);
+        List<String> textError = getTextError(violations);
+        assertEquals("description не должно быть пустым",
+                textError.getFirst() + " " + textError.getLast());
     }
 
     @Test
@@ -126,9 +146,21 @@ public class FilmControllerTest {
         film.setReleaseDate("2009-05-13");
         film.setDuration(-100);
 
-        Exception e = assertThrows(ValidationException.class, () -> {
-            filmController.addFilm(film);
-        });
-        assertEquals("Продолжительность фильма не может быть отрицательной", e.getMessage());
+        Set<ConstraintViolation<Film>> violations = validator.validate(film);
+        List<String> textError = getTextError(violations);
+        assertEquals("duration должно быть больше 0", textError.getFirst() + " " + textError.getLast());
+    }
+
+    private List<String> getTextError(Set<ConstraintViolation<Film>> violations) {
+        List<String> textError = new ArrayList<>();
+        String field = "";
+        String message = "";
+        for (ConstraintViolation<Film> violation : violations) {
+            field = violation.getPropertyPath().toString();
+            textError.add(field);
+            message = violation.getMessage();
+            textError.add(message);
+        }
+        return textError;
     }
 }

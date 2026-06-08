@@ -19,16 +19,16 @@ import java.util.Map;
 @RequestMapping("/users")
 public class UserController {
 
-    public static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+    private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private final Map<Integer, User> users = new HashMap<>();
 
     @PostMapping
-    public User addUser(@RequestBody User user) {
-        log.trace("Check user's fields");
+    public User addUser(@Valid @RequestBody User user) {
+        log.debug("Check user's fields");
         checkFields(user);
         user.setId(getNextId());
         users.put(user.getId(), user);
-        log.trace("Added user");
+        log.debug("Added user");
         return user;
     }
 
@@ -50,13 +50,13 @@ public class UserController {
         }
         if (users.containsKey(updateUser.getId())) {
             User oldUser = users.get(updateUser.getId());
-            log.trace("Check update user's fields");
+            log.debug("Check update user's fields");
             checkFields(updateUser);
             oldUser.setEmail(updateUser.getEmail());
             oldUser.setLogin(updateUser.getLogin());
             oldUser.setName(updateUser.getName());
             oldUser.setBirthday(updateUser.getBirthday());
-            log.trace("Updated user {}", oldUser.getLogin());
+            log.debug("Updated user {}", oldUser.getLogin());
             return oldUser;
         }
         log.error("Error: user with id {} isn't found", updateUser.getId());
@@ -69,28 +69,12 @@ public class UserController {
     }
 
     private void checkFields(User user) {
-        if (user.getEmail() == null || user.getEmail().isBlank()) {
-            log.error("Error: uninitialised user's email");
-            throw new ValidationException("Email не может быть пустым");
-        }
-        if (!user.getEmail().contains("@")) {
-            log.error("Error: incorrect email");
-            throw new ValidationException("Email должен содержать символ '@'");
-        }
-        if (user.getLogin() == null || user.getLogin().isBlank()) {
-            log.error("Error: uninitialised user's login");
-            throw new ValidationException("Логин не может быть пустым");
-        }
         if (user.getLogin().contains(" ")) {
             log.error("Error: incorrect login");
             throw new ValidationException("Логин не должен содержать пробелы");
         }
         if (user.getName() == null || user.getName().isBlank()) {
             user.setName(user.getLogin());
-        }
-        if (user.getBirthday() == null || user.getBirthday().isBlank()) {
-            log.error("Error: uninitialised user's birthday");
-            throw new ValidationException("Дата рождения не может быть пустой");
         }
         LocalDate birthdayUser = LocalDate.parse(user.getBirthday(), FORMATTER);
         if (birthdayUser.isAfter(LocalDate.now())) {
