@@ -12,6 +12,12 @@ import org.junit.jupiter.api.Test;
 import ru.yandex.practicum.filmorate.controller.FilmController;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.Film;
+import ru.yandex.practicum.filmorate.model.User;
+import ru.yandex.practicum.filmorate.service.film.FilmService;
+import ru.yandex.practicum.filmorate.storage.film.FilmStorage;
+import ru.yandex.practicum.filmorate.storage.film.InMemoryFilmStorage;
+import ru.yandex.practicum.filmorate.storage.user.InMemoryUserStorage;
+import ru.yandex.practicum.filmorate.storage.user.UserStorage;
 
 import java.lang.annotation.Annotation;
 import java.time.LocalDate;
@@ -19,10 +25,14 @@ import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.assertj.core.api.Assertions.assertThat;
 
 public class FilmControllerTest {
 
-    private final FilmController filmController = new FilmController();
+    private final FilmStorage filmStorage = new InMemoryFilmStorage();
+    private final UserStorage userStorage = new InMemoryUserStorage();
+    private final FilmService filmService = new FilmService(filmStorage, userStorage);
+    private final FilmController filmController = new FilmController(filmService);
     private static final LocalDate MIN_RELEASE_DATE = LocalDate.parse("1895-12-28");
     private static ValidatorFactory validatorFactory;
     private static Validator validator;
@@ -149,6 +159,56 @@ public class FilmControllerTest {
         Set<ConstraintViolation<Film>> violations = validator.validate(film);
         assertEquals("duration", getPropertyPath(violations));
         assertEquals(Positive.class, getType(violations));
+    }
+
+    @Test
+    void something() {
+        User user1 = createUser("mail@gmail.com", "log1", "Bob", "1990-11-05");
+        User user2 = createUser("mail@mail.com", "log2", "Ross", "1988-12-11");
+        User user3 = createUser("mailmail@mail.com", "log3", "Ivan", "1983-10-10");
+        User user4 = createUser("emailmail@mail.com", "log4", "Kate", "1985-09-18");
+
+        User addUser1 = userStorage.addUser(user1);
+        User addUser2 = userStorage.addUser(user2);
+        User addUser3 = userStorage.addUser(user3);
+        User addUser4 = userStorage.addUser(user4);
+
+        Film film1 = createFilm("Вверх", "Приключенческое драмеди", "2009-05-13", 96);
+        Film film2 = createFilm("Дюна", "Научная фантастика", "2021-09-03", 155);
+        Film film3 = createFilm("Стражи Галактики", "Боевик", "2014-07-21", 121);
+
+        filmController.addFilm(film1);
+        filmController.addFilm(film2);
+        filmController.addFilm(film3);
+
+        filmController.addLike(1,1);
+        filmController.addLike(2,1);
+        filmController.addLike(3,1);
+        filmController.addLike(3,2);
+        filmController.addLike(3,3);
+        filmController.addLike(3,4);
+        filmController.addLike(2,4);
+
+        assertThat(filmController.getPopularFilms(0)).containsExactly(film3, film2, film1);
+
+    }
+
+    private User createUser(String email, String login, String name, String birthDay) {
+        User user = new User();
+        user.setEmail(email);
+        user.setLogin(login);
+        user.setName(name);
+        user.setBirthday(birthDay);
+        return user;
+    }
+
+    private Film createFilm(String name, String description, String releaseDate, int duration) {
+        Film film = new Film();
+        film.setName(name);
+        film.setDescription(description);
+        film.setReleaseDate(releaseDate);
+        film.setDuration(duration);
+        return film;
     }
 
     private String getPropertyPath(Set<ConstraintViolation<Film>> violations) {

@@ -2,84 +2,64 @@ package ru.yandex.practicum.filmorate.controller;
 
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
-import ru.yandex.practicum.filmorate.exception.NotFoundException;
-import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.User;
+import ru.yandex.practicum.filmorate.service.user.UserService;
 
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 @Slf4j
 @RestController
 @RequestMapping("/users")
 public class UserController {
+    private final UserService userService;
 
-    private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-    private final Map<Integer, User> users = new HashMap<>();
+    @Autowired
+    public UserController(UserService userService) {
+        this.userService = userService;
+    }
 
     @PostMapping
     public User addUser(@Valid @RequestBody User user) {
-        log.debug("Check user's fields");
-        checkFields(user);
-        user.setId(getNextId());
-        users.put(user.getId(), user);
-        log.debug("Added user");
-        return user;
-    }
-
-    private int getNextId() {
-        int currentMaxId = users.keySet()
-                .stream()
-                .mapToInt(id -> id)
-                .max()
-                .orElse(0);
-        log.debug("user's id: {}", currentMaxId + 1);
-        return ++currentMaxId;
+        return userService.addUser(user);
     }
 
     @PutMapping
     public User update(@Valid @RequestBody User updateUser) {
-        if (updateUser.getId() == 0) {
-            log.error("Error: uninitialised id");
-            throw new ValidationException("Id должен быть указан");
-        }
-        if (users.containsKey(updateUser.getId())) {
-            User oldUser = users.get(updateUser.getId());
-            log.debug("Check update user's fields");
-            checkFields(updateUser);
-            oldUser.setEmail(updateUser.getEmail());
-            oldUser.setLogin(updateUser.getLogin());
-            oldUser.setName(updateUser.getName());
-            oldUser.setBirthday(updateUser.getBirthday());
-            log.debug("Updated user {}", oldUser.getLogin());
-            return oldUser;
-        }
-        log.error("Error: user with id {} isn't found", updateUser.getId());
-        throw new NotFoundException("Пользователь с id = " + updateUser.getId() + " не найден");
+        return userService.update(updateUser);
     }
 
     @GetMapping
     public List<User> getAllUsers() {
-        return new ArrayList<>(users.values());
+        return userService.getAllUsers();
     }
 
-    private void checkFields(User user) {
-        if (user.getLogin().contains(" ")) {
-            log.error("Error: incorrect login");
-            throw new ValidationException("Логин не должен содержать пробелы");
-        }
-        if (user.getName() == null || user.getName().isBlank()) {
-            user.setName(user.getLogin());
-        }
-        LocalDate birthdayUser = LocalDate.parse(user.getBirthday(), FORMATTER);
-        if (birthdayUser.isAfter(LocalDate.now())) {
-            log.error("Error: incorrect birthday");
-            throw new ValidationException("Дата рождения не может быть в будущем");
-        }
+    @PutMapping("/{id}/friends/{friendId}")
+    public void addFriend(@PathVariable Integer id,
+                          @PathVariable Integer friendId) {
+        userService.addFriend(id, friendId);
+    }
+
+    @DeleteMapping("/{id}/friends/{friendId}")
+    public void deleteFriend(@PathVariable Integer id,
+                             @PathVariable Integer friendId) {
+        userService.deleteFriend(id, friendId);
+    }
+
+    @GetMapping("/{id}/friends")
+    public List<User> getAllFriends(@PathVariable Integer id) {
+        return userService.getAllFriends(id);
+    }
+
+    @GetMapping("/{id}/friends/common/{otherId}")
+    public List<User> getSameFriends(@PathVariable Integer id,
+                                     @PathVariable Integer otherId) {
+        return userService.getSameFriends(id, otherId);
+    }
+
+    @GetMapping("/{id}")
+    public User findById(@PathVariable Integer id) {
+        return userService.getUser(id);
     }
 }

@@ -5,30 +5,57 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import ru.yandex.practicum.filmorate.controller.UserController;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.User;
+import ru.yandex.practicum.filmorate.service.user.UserService;
+import ru.yandex.practicum.filmorate.storage.user.InMemoryUserStorage;
+import ru.yandex.practicum.filmorate.storage.user.UserStorage;
 
 import java.lang.annotation.Annotation;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.util.Set;
+import java.util.*;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 
 public class UserControllerTest {
 
-    private final UserController userController = new UserController();
+    private static UserStorage userStorage = new InMemoryUserStorage();
+    private static UserService userService = new UserService(userStorage);
+    private static UserController userController = new UserController(userService);
     private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private static ValidatorFactory validatorFactory;
     private static Validator validator;
+    private User user1;
+    private User user2;
+    private User user3;
+    private User user4;
 
     @BeforeAll
     static void setUp() {
         validatorFactory = Validation.buildDefaultValidatorFactory();
         validator = validatorFactory.getValidator();
+    }
+
+    @BeforeEach
+    void beforeEach() {
+        userStorage = new InMemoryUserStorage();
+        userService = new UserService(userStorage);
+        userController = new UserController(userService);
+
+        user1 = createUser("mail@gmail.com", "log1", "Bob", "1990-11-05");
+        user2 = createUser("mail@mail.com", "log2", "Ross", "1988-12-11");
+        user3 = createUser("mailmail@mail.com", "log3", "Ivan", "1983-10-10");
+        user4 = createUser("emailmail@mail.com", "log4", "Kate", "1985-09-18");
+
+        User addUser1 = userController.addUser(user1);
+        User addUser2 = userController.addUser(user2);
+        User addUser3 = userController.addUser(user3);
+        User addUser4 = userController.addUser(user4);
     }
 
     @AfterAll
@@ -145,6 +172,44 @@ public class UserControllerTest {
             userController.addUser(user);
         });
         assertEquals("Дата рождения не может быть в будущем", e.getMessage());
+    }
+
+    @Test
+    void user1AndUser2ShouldBeFriends() {
+        userController.addFriend(1, 2);
+        assertThat(user1.getFriends())
+                .containsExactlyInAnyOrder(2);
+
+        assertThat(user2.getFriends())
+                .containsExactlyInAnyOrder(1);
+    }
+
+    @Test
+    void shouldReturnOnlyCommonFriends() {
+        userController.addFriend(1, 2);
+        userController.addFriend(1, 3);
+        userController.addFriend(1, 4);
+        userController.addFriend(2, 4);
+
+        assertThat(userController.getSameFriends(1, 2))
+                .containsExactlyInAnyOrder(user4);
+    }
+
+    @Test
+    void shouldReturnEmptyListWhenNoCommonFriends() {
+        userController.addFriend(1, 2);
+        assertThat(userController.getSameFriends(1,2))
+                .isEmpty();
+
+    }
+
+    private User createUser(String email, String login, String name, String birthDay) {
+        User user = new User();
+        user.setEmail(email);
+        user.setLogin(login);
+        user.setName(name);
+        user.setBirthday(birthDay);
+        return user;
     }
 
     private String getPropertyPath(Set<ConstraintViolation<User>> violations) {
