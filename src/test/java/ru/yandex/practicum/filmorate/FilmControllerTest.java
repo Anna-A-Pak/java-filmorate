@@ -14,6 +14,7 @@ import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.model.User;
 import ru.yandex.practicum.filmorate.service.film.FilmService;
+import ru.yandex.practicum.filmorate.service.user.UserService;
 import ru.yandex.practicum.filmorate.storage.film.FilmStorage;
 import ru.yandex.practicum.filmorate.storage.film.InMemoryFilmStorage;
 import ru.yandex.practicum.filmorate.storage.user.InMemoryUserStorage;
@@ -31,7 +32,8 @@ public class FilmControllerTest {
 
     private final FilmStorage filmStorage = new InMemoryFilmStorage();
     private final UserStorage userStorage = new InMemoryUserStorage();
-    private final FilmService filmService = new FilmService(filmStorage, userStorage);
+    private final UserService userService = new UserService(userStorage);
+    private final FilmService filmService = new FilmService(filmStorage, userService);
     private final FilmController filmController = new FilmController(filmService);
     private static final LocalDate MIN_RELEASE_DATE = LocalDate.parse("1895-12-28");
     private static ValidatorFactory validatorFactory;
@@ -163,6 +165,7 @@ public class FilmControllerTest {
 
     @Test
     void something() {
+
         User user1 = createUser("mail@gmail.com", "log1", "Bob", "1990-11-05");
         User user2 = createUser("mail@mail.com", "log2", "Ross", "1988-12-11");
         User user3 = createUser("mailmail@mail.com", "log3", "Ivan", "1983-10-10");
@@ -189,7 +192,7 @@ public class FilmControllerTest {
         filmController.addLike(3,4);
         filmController.addLike(2,4);
 
-        assertThat(filmController.getPopularFilms(0)).containsExactly(film3, film2, film1);
+        assertThat(filmController.getPopularFilms(10)).containsExactly(film3, film2, film1);
 
     }
 

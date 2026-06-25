@@ -4,9 +4,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
+import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.User;
 import ru.yandex.practicum.filmorate.storage.user.UserStorage;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -16,6 +19,7 @@ import java.util.Set;
 public class UserService {
 
     private final UserStorage userStorage;
+    private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
     @Autowired
     public UserService(UserStorage userStorage) {
@@ -27,11 +31,27 @@ public class UserService {
     }
 
     public User addUser(User user) {
-        return userStorage.addUser(user);
+        log.debug("Check user's fields");
+        checkFields(user);
+        User createdUser = userStorage.addUser(user);
+        log.debug("Added user");
+        return createdUser;
     }
 
     public User update(User user) {
-        return userStorage.update(user);
+        if (user.getId() == 0) {
+            log.error("Error: uninitialised id");
+            throw new ValidationException("Id должен быть указан");
+        }
+        if (userStorage.findById(user.getId()).isPresent()) {
+            log.debug("Check update user's fields");
+            checkFields(user);
+            User updateUser = userStorage.update(user);
+            log.debug("Updated user {}", updateUser.getLogin());
+            return updateUser;
+        }
+        log.error("Error: user with id {} isn't found", user.getId());
+        throw new NotFoundException("Пользователь с id = " + user.getId() + " не найден");
     }
 
     public void deleteUser(Integer id) {
@@ -60,11 +80,10 @@ public class UserService {
 
     public List<User> getAllFriends(Integer userId) {
         User user = getUser(userId);
-        Set<Integer> friends = user.getFriends();
-        List<User> users = userStorage.getAllUsers();
+        Set<Integer> friendsId = user.getFriends();
         log.debug("Getting a list of friends");
-        return users.stream()
-                .filter(u -> friends.contains(u.getId()))
+        return friendsId.stream()
+                .map(this::getUser)
                 .toList();
     }
 
@@ -75,12 +94,26 @@ public class UserService {
         User friend = getUser(friendId);
         Set<Integer> friendsFriend = friend.getFriends();
 
-        List<User> users = userStorage.getAllUsers();
         log.debug("Getting a list of identical friends");
-        return users.stream()
-                .filter(u -> friendsUser.contains(u.getId()))
-                .filter(u -> friendsFriend.contains(u.getId()))
+        return friendsUser.stream()
+                .filter(friendsFriend::contains)
+                .map(this::getUser)
                 .toList();
+    }
+
+    private void checkFields(User user) {
+        if (user.getLogin().contains(" ")) {
+            log.error("Error: incorrect login");
+            throw new ValidationException("Логин не должен содержать пробелы");
+        }
+        if (user.getName() == null || user.getName().isBlank()) {
+            user.setName(user.getLogin());
+        }
+        LocalDate birthdayUser = LocalDate.parse(user.getBirthday(), FORMATTER);
+        if (birthdayUser.isAfter(LocalDate.now())) {
+            log.error("Error: incorrect birthday");
+            throw new ValidationException("Дата рождения не может быть в будущем");
+        }
     }
 
     public User getUser(Integer userId) {

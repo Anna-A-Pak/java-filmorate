@@ -1,6 +1,7 @@
 package ru.yandex.practicum.filmorate.controller;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -25,11 +26,18 @@ public class ErrorHandler {
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ErrorResponse handleArgumentNotValid(final MethodArgumentNotValidException e) {
-        return new ErrorResponse("Ошибка валидации.",
-                "Поле "
-                        + e.getBindingResult().getFieldError().getField() + " "
-                        + e.getBindingResult().getFieldError().getDefaultMessage()
-        );
+        FieldError fieldError = e.getBindingResult().getFieldError();
+        if (fieldError != null) {
+            return new ErrorResponse("Ошибка валидации.",
+                    "Поле "
+                            + fieldError.getField() + " "
+                            + fieldError.getDefaultMessage()
+            );
+        } else {
+            return new ErrorResponse("Ошибка валидации.",
+                    "Некорректные данные в запросе"
+            );
+        }
     }
 
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
