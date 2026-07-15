@@ -4,6 +4,9 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 
+import java.util.HashSet;
+import java.util.Set;
+
 @Data
 public class User {
     private int id;
@@ -15,4 +18,5 @@ public class User {
     private String name;
     @NotBlank
     private String birthday;
+    private Set<Integer> friends = new HashSet<>();
 }
