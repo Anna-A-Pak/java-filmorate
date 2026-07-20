@@ -4,8 +4,11 @@ import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+import ru.yandex.practicum.filmorate.dto.NewUserRequest;
+import ru.yandex.practicum.filmorate.dto.UpdateUserRequest;
 import ru.yandex.practicum.filmorate.model.User;
 import ru.yandex.practicum.filmorate.service.user.UserService;
+
 
 import java.util.List;
 
@@ -21,13 +24,13 @@ public class UserController {
     }
 
     @PostMapping
-    public User addUser(@Valid @RequestBody User user) {
-        return userService.addUser(user);
+    public User addUser(@Valid @RequestBody NewUserRequest request) {
+        return userService.addUser(request);
     }
 
     @PutMapping
-    public User update(@Valid @RequestBody User updateUser) {
-        return userService.update(updateUser);
+    public User update(@Valid @RequestBody UpdateUserRequest request) {
+        return userService.update(request);
     }
 
     @GetMapping

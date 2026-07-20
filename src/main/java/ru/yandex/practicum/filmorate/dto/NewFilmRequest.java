@@ -1,17 +1,17 @@
-package ru.yandex.practicum.filmorate.model;
+package ru.yandex.practicum.filmorate.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Positive;
 import lombok.Data;
+import ru.yandex.practicum.filmorate.model.Genre;
+import ru.yandex.practicum.filmorate.model.Mpa;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
+
 
 @Data
-public class Film {
-    private int id;
+public class NewFilmRequest {
     @NotBlank
     private String name;
     @NotBlank
@@ -21,6 +21,5 @@ public class Film {
     @Positive
     private int duration;
     private Mpa mpa;
-    private Set<Integer> likes = new HashSet<>();
     private List<Genre> genres = new ArrayList<>();
 }

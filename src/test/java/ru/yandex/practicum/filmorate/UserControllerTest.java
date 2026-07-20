@@ -8,6 +8,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import ru.yandex.practicum.filmorate.controller.UserController;
+import ru.yandex.practicum.filmorate.dto.NewUserRequest;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.User;
 import ru.yandex.practicum.filmorate.service.user.UserService;
@@ -30,10 +31,15 @@ public class UserControllerTest {
     private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private static ValidatorFactory validatorFactory;
     private static Validator validator;
-    private User user1;
-    private User user2;
-    private User user3;
-    private User user4;
+    private NewUserRequest user1;
+    private NewUserRequest user2;
+    private NewUserRequest user3;
+    private NewUserRequest user4;
+    private User addUser1;
+    private User addUser2;
+    private User addUser3;
+    private User addUser4;
+
 
     @BeforeAll
     static void setUp() {
@@ -52,10 +58,10 @@ public class UserControllerTest {
         user3 = createUser("mailmail@mail.com", "log3", "Ivan", "1983-10-10");
         user4 = createUser("emailmail@mail.com", "log4", "Kate", "1985-09-18");
 
-        User addUser1 = userController.addUser(user1);
-        User addUser2 = userController.addUser(user2);
-        User addUser3 = userController.addUser(user3);
-        User addUser4 = userController.addUser(user4);
+        addUser1 = userController.addUser(user1);
+        addUser2 = userController.addUser(user2);
+        addUser3 = userController.addUser(user3);
+        addUser4 = userController.addUser(user4);
     }
 
     @AfterAll
@@ -65,7 +71,7 @@ public class UserControllerTest {
 
     @Test
     void shouldAddUserWhenAllFieldsAreCorrect() {
-        User user = new User();
+        NewUserRequest user = new NewUserRequest();
         user.setEmail("email@gmail.com");
         user.setLogin("login");
         user.setName("Tom");
@@ -81,32 +87,32 @@ public class UserControllerTest {
 
     @Test
     void shouldNotAddUserWithoutEmail() {
-        User user = new User();
+        NewUserRequest user = new NewUserRequest();
         user.setLogin("login");
         user.setName("Tom");
         user.setBirthday("1990-11-07");
 
-        Set<ConstraintViolation<User>> violations = validator.validate(user);
+        Set<ConstraintViolation<NewUserRequest>> violations = validator.validate(user);
         assertEquals("email", getPropertyPath(violations));
         assertEquals(NotBlank.class, getType(violations));
     }
 
     @Test
     void shouldNotAddUserWithIncorrectEmail() {
-        User user = new User();
+        NewUserRequest user = new NewUserRequest();
         user.setEmail("emailgmail.com");
         user.setLogin("login");
         user.setName("Tom");
         user.setBirthday("1990-11-07");
 
-        Set<ConstraintViolation<User>> violations = validator.validate(user);
+        Set<ConstraintViolation<NewUserRequest>> violations = validator.validate(user);
         assertEquals("email", getPropertyPath(violations));
         assertEquals(Email.class, getType(violations));
     }
 
     @Test
     void shouldAddUserWithoutName() {
-        User user = new User();
+        NewUserRequest user = new NewUserRequest();
         user.setEmail("email@gmail.com");
         user.setLogin("login");
         user.setBirthday("1990-11-07");
@@ -115,13 +121,13 @@ public class UserControllerTest {
 
         assertEquals(user.getEmail(), addUser.getEmail());
         assertEquals(user.getLogin(), addUser.getLogin());
-        assertEquals(user.getName(), addUser.getName());
+        assertEquals(user.getLogin(), addUser.getName());
         assertEquals(user.getBirthday(), addUser.getBirthday());
     }
 
     @Test
     void shouldNotAddUserWithIncorrectLogin() {
-        User user = new User();
+        NewUserRequest user = new NewUserRequest();
         user.setEmail("email@gmail.com");
         user.setLogin("log in");
         user.setName("Tom");
@@ -135,31 +141,31 @@ public class UserControllerTest {
 
     @Test
     void shouldNotAddUserWithoutLogin() {
-        User user = new User();
+        NewUserRequest user = new NewUserRequest();
         user.setEmail("email@gmail.com");
         user.setName("Tom");
         user.setBirthday("1990-11-07");
 
-        Set<ConstraintViolation<User>> violations = validator.validate(user);
+        Set<ConstraintViolation<NewUserRequest>> violations = validator.validate(user);
         assertEquals("login", getPropertyPath(violations));
         assertEquals(NotBlank.class, getType(violations));
     }
 
     @Test
     void shouldNotAddUserWithoutBirthday() {
-        User user = new User();
+        NewUserRequest user = new NewUserRequest();
         user.setEmail("email@gmail.com");
         user.setLogin("login");
         user.setName("Tom");
 
-        Set<ConstraintViolation<User>> violations = validator.validate(user);
+        Set<ConstraintViolation<NewUserRequest>> violations = validator.validate(user);
         assertEquals("birthday", getPropertyPath(violations));
         assertEquals(NotBlank.class, getType(violations));
     }
 
     @Test
     void shouldNotAddUserWithIncorrectBirthday() {
-        User user = new User();
+        NewUserRequest user = new NewUserRequest();
         user.setEmail("email@gmail.com");
         user.setLogin("login");
         user.setName("Tom");
@@ -177,10 +183,11 @@ public class UserControllerTest {
     @Test
     void user1AndUser2ShouldBeFriends() {
         userController.addFriend(1, 2);
-        assertThat(user1.getFriends())
+
+        assertThat(addUser1.getFriends())
                 .containsExactlyInAnyOrder(2);
 
-        assertThat(user2.getFriends())
+        assertThat(addUser2.getFriends())
                 .containsExactlyInAnyOrder(1);
     }
 
@@ -192,7 +199,7 @@ public class UserControllerTest {
         userController.addFriend(2, 4);
 
         assertThat(userController.getSameFriends(1, 2))
-                .containsExactlyInAnyOrder(user4);
+                .containsExactlyInAnyOrder(addUser4);
     }
 
     @Test
@@ -203,8 +210,8 @@ public class UserControllerTest {
 
     }
 
-    private User createUser(String email, String login, String name, String birthDay) {
-        User user = new User();
+    private NewUserRequest createUser(String email, String login, String name, String birthDay) {
+        NewUserRequest user = new NewUserRequest();
         user.setEmail(email);
         user.setLogin(login);
         user.setName(name);
@@ -212,17 +219,17 @@ public class UserControllerTest {
         return user;
     }
 
-    private String getPropertyPath(Set<ConstraintViolation<User>> violations) {
+    private String getPropertyPath(Set<ConstraintViolation<NewUserRequest>> violations) {
         String field = "";
-        for (ConstraintViolation<User> violation : violations) {
+        for (ConstraintViolation<NewUserRequest> violation : violations) {
             field = violation.getPropertyPath().toString();
         }
         return field;
     }
 
-    private Class<? extends Annotation> getType(Set<ConstraintViolation<User>> violations) {
+    private Class<? extends Annotation> getType(Set<ConstraintViolation<NewUserRequest>> violations) {
         Class<? extends Annotation> type = null;
-        for (ConstraintViolation<User> violation : violations) {
+        for (ConstraintViolation<NewUserRequest> violation : violations) {
             type = violation.getConstraintDescriptor().getAnnotation().annotationType();
         }
         return type;

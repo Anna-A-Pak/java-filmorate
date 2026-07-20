@@ -10,8 +10,10 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import ru.yandex.practicum.filmorate.controller.FilmController;
+import ru.yandex.practicum.filmorate.dto.NewFilmRequest;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.Film;
+import ru.yandex.practicum.filmorate.model.Mpa;
 import ru.yandex.practicum.filmorate.model.User;
 import ru.yandex.practicum.filmorate.service.film.FilmService;
 import ru.yandex.practicum.filmorate.service.user.UserService;
@@ -52,11 +54,12 @@ public class FilmControllerTest {
 
     @Test
     void shouldAddFilmWhenAllFieldsAreCorrect() {
-        Film film = new Film();
+        NewFilmRequest film = new NewFilmRequest();
         film.setName("Вверх");
         film.setDescription("Приключенческое драмеди");
         film.setReleaseDate("2009-05-13");
         film.setDuration(96);
+        film.setMpa(new Mpa(1, "G"));
 
         Film addFilm = filmController.addFilm(film);
 
@@ -72,6 +75,7 @@ public class FilmControllerTest {
         film.setDescription("Приключенческое драмеди");
         film.setReleaseDate("2009-05-13");
         film.setDuration(96);
+        film.setMpa(new Mpa(1, "G"));
 
         Set<ConstraintViolation<Film>> violations = validator.validate(film);
         assertEquals("name", getPropertyPath(violations));
@@ -85,6 +89,7 @@ public class FilmControllerTest {
         film.setDescription("Приключенческое драмеди");
         film.setReleaseDate("2009-05-13");
         film.setDuration(96);
+        film.setMpa(new Mpa(1, "G"));
 
         Set<ConstraintViolation<Film>> violations = validator.validate(film);
         assertEquals("name", getPropertyPath(violations));
@@ -98,6 +103,7 @@ public class FilmControllerTest {
         film.setDescription("  ");
         film.setReleaseDate("2009-05-13");
         film.setDuration(96);
+        film.setMpa(new Mpa(1, "G"));
 
         Set<ConstraintViolation<Film>> violations = validator.validate(film);
         assertEquals("description", getPropertyPath(violations));
@@ -106,7 +112,7 @@ public class FilmControllerTest {
 
     @Test
     void shouldNotAddFilmWithDescriptionLengthMoreThen200() {
-        Film film = new Film();
+        NewFilmRequest film = new NewFilmRequest();
         film.setName("Вверх");
         film.setDescription("Всю жизнь Элли хотела попасть в Южную Америку к Райскому водопаду. " +
                 "Однажды они с мужем решили завести ребёнка, но после выкидыша девушка оказалась бесплодной. " +
@@ -115,6 +121,7 @@ public class FilmControllerTest {
                 "в жизнь и попасть на тепуи.");
         film.setReleaseDate("2009-05-13");
         film.setDuration(96);
+        film.setMpa(new Mpa(1, "G"));
 
         Exception e = assertThrows(ValidationException.class, () -> {
             filmController.addFilm(film);
@@ -124,11 +131,12 @@ public class FilmControllerTest {
 
     @Test
     void shouldNotAddFilmWithReleaseDateLessThenMinReleaseDate() {
-        Film film = new Film();
+        NewFilmRequest film = new NewFilmRequest();
         film.setName("Вверх");
         film.setDescription("Приключенческое драмеди");
         film.setReleaseDate("1894-05-13");
         film.setDuration(96);
+        film.setMpa(new Mpa(1, "G"));
 
         Exception e = assertThrows(ValidationException.class, () -> {
             filmController.addFilm(film);
@@ -138,11 +146,12 @@ public class FilmControllerTest {
 
     @Test
     void shouldNotAddFilmWithDurationNil() {
-        Film film = new Film();
+        NewFilmRequest film = new NewFilmRequest();
         film.setName("Вверх");
         film.setDescription("Приключенческое драмеди");
         film.setReleaseDate("2009-05-13");
         film.setDuration(0);
+        film.setMpa(new Mpa(1, "G"));
 
         Exception e = assertThrows(ValidationException.class, () -> {
             filmController.addFilm(film);
@@ -157,6 +166,7 @@ public class FilmControllerTest {
         film.setDescription("Приключенческое драмеди");
         film.setReleaseDate("2009-05-13");
         film.setDuration(-100);
+        film.setMpa(new Mpa(1, "G"));
 
         Set<ConstraintViolation<Film>> violations = validator.validate(film);
         assertEquals("duration", getPropertyPath(violations));
@@ -165,6 +175,10 @@ public class FilmControllerTest {
 
     @Test
     void something() {
+
+        Mpa mpaG = new Mpa(1, "G");
+        Mpa mpaR = new Mpa(4, "R");
+        Mpa mpaNC = new Mpa(5, "NC-17");
 
         User user1 = createUser("mail@gmail.com", "log1", "Bob", "1990-11-05");
         User user2 = createUser("mail@mail.com", "log2", "Ross", "1988-12-11");
@@ -176,13 +190,16 @@ public class FilmControllerTest {
         User addUser3 = userStorage.addUser(user3);
         User addUser4 = userStorage.addUser(user4);
 
-        Film film1 = createFilm("Вверх", "Приключенческое драмеди", "2009-05-13", 96);
-        Film film2 = createFilm("Дюна", "Научная фантастика", "2021-09-03", 155);
-        Film film3 = createFilm("Стражи Галактики", "Боевик", "2014-07-21", 121);
+        NewFilmRequest newFilm1 = createFilm("Вверх", "Приключенческое драмеди",
+                "2009-05-13", 96, mpaG);
+        NewFilmRequest newFilm2 = createFilm("Дюна", "Научная фантастика",
+                "2021-09-03", 155, mpaR);
+        NewFilmRequest newfFilm3 = createFilm("Стражи Галактики", "Боевик",
+                "2014-07-21", 121, mpaNC);
 
-        filmController.addFilm(film1);
-        filmController.addFilm(film2);
-        filmController.addFilm(film3);
+        Film film1 = filmController.addFilm(newFilm1);
+        Film film2 = filmController.addFilm(newFilm2);
+        Film film3 = filmController.addFilm(newfFilm3);
 
         filmController.addLike(1,1);
         filmController.addLike(2,1);
@@ -205,12 +222,13 @@ public class FilmControllerTest {
         return user;
     }
 
-    private Film createFilm(String name, String description, String releaseDate, int duration) {
-        Film film = new Film();
+    private NewFilmRequest createFilm(String name, String description, String releaseDate, int duration, Mpa mpa) {
+        NewFilmRequest film = new NewFilmRequest();
         film.setName(name);
         film.setDescription(description);
         film.setReleaseDate(releaseDate);
         film.setDuration(duration);
+        film.setMpa(mpa);
         return film;
     }
 
