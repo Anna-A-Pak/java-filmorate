@@ -59,6 +59,9 @@ class FilmDbStorageTest {
         jdbc.execute(
                 "ALTER TABLE films ALTER COLUMN film_id RESTART WITH 1"
         );
+        jdbc.execute(
+                "ALTER TABLE users ALTER COLUMN user_id RESTART WITH 1"
+        );
 
         List<Genre> genreD = List.of(new Genre(6, "Боевик"));
         List<Genre> genres = List.of(

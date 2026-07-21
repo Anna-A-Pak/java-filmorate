@@ -1,25 +1,25 @@
 package ru.yandex.practicum.filmorate.dal;
 
-import lombok.RequiredArgsConstructor;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.stereotype.Repository;
 import ru.yandex.practicum.filmorate.dal.mappers.UserRowMapper;
-import ru.yandex.practicum.filmorate.exception.InternalServerException;
 import ru.yandex.practicum.filmorate.model.User;
 import ru.yandex.practicum.filmorate.storage.user.UserStorage;
 
-import java.sql.PreparedStatement;
-import java.sql.Statement;
+
 import java.util.List;
 import java.util.Optional;
 
 @Repository
-@RequiredArgsConstructor
-public class UserDbStorage implements UserStorage {
-    private final JdbcTemplate jdbc;
+public class UserDbStorage extends BaseStorage implements UserStorage {
+
     private final UserRowMapper mapper;
+
+    public UserDbStorage(JdbcTemplate jdbc, UserRowMapper mapper) {
+        super(jdbc);
+        this.mapper = mapper;
+    }
 
     private static final String GET_ALL_QUERY = """
             SELECT
@@ -107,6 +107,7 @@ public class UserDbStorage implements UserStorage {
 
     public User addUser(User user) {
         int id = insert(
+                INSERT_QUERY,
                 user.getEmail(),
                 user.getLogin(),
                 user.getName(),
@@ -118,6 +119,7 @@ public class UserDbStorage implements UserStorage {
 
     public User update(User user) {
         update(
+                UPDATE_QUERY,
                 user.getEmail(),
                 user.getLogin(),
                 user.getName(),
@@ -172,31 +174,5 @@ public class UserDbStorage implements UserStorage {
 
             return sameFriend;
         }, user.getId(), friend.getId());
-    }
-
-    protected int insert(Object... params) {
-        GeneratedKeyHolder keyHolder = new GeneratedKeyHolder();
-        jdbc.update(connection -> {
-            PreparedStatement ps = connection
-                    .prepareStatement(UserDbStorage.INSERT_QUERY, Statement.RETURN_GENERATED_KEYS);
-            for (int idx = 0; idx < params.length; idx++) {
-                ps.setObject(idx + 1, params[idx]);
-            }
-            return ps; }, keyHolder);
-
-        Integer id = keyHolder.getKeyAs(Integer.class);
-
-        if (id != null) {
-            return id;
-        } else {
-            throw new InternalServerException("Не удалось сохранить данные");
-        }
-    }
-
-    protected void update(Object... params) {
-        int rowsUpdated = jdbc.update(UserDbStorage.UPDATE_QUERY, params);
-        if (rowsUpdated == 0) {
-            throw new InternalServerException("Не удалось обновить данные");
-        }
     }
 }

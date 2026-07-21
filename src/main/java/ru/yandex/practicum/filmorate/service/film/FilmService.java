@@ -11,7 +11,8 @@ import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.mapper.FilmMapper;
 import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.model.Genre;
-import ru.yandex.practicum.filmorate.model.Mpa;
+import ru.yandex.practicum.filmorate.service.genre.GenreService;
+import ru.yandex.practicum.filmorate.service.mpa.MpaService;
 import ru.yandex.practicum.filmorate.service.user.UserService;
 import ru.yandex.practicum.filmorate.storage.film.FilmStorage;
 
@@ -25,14 +26,21 @@ public class FilmService {
 
     private final FilmStorage filmStorage;
     private final UserService userService;
+    private final GenreService genreService;
+    private final MpaService mpaService;
 
     private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private static final LocalDate MIN_RELEASE_DATE = LocalDate.parse("1895-12-28");
 
     @Autowired
-    public FilmService(@Qualifier("filmDbStorage") FilmStorage filmStorage, UserService userService) {
+    public FilmService(@Qualifier("filmDbStorage") FilmStorage filmStorage,
+                       UserService userService,
+                       GenreService genreService,
+                       MpaService mpaService) {
         this.filmStorage = filmStorage;
         this.userService = userService;
+        this.genreService = genreService;
+        this.mpaService = mpaService;
     }
 
     public List<Film> getAllMovies() {
@@ -42,7 +50,7 @@ public class FilmService {
     public Film addFilm(NewFilmRequest request) {
         log.debug("Check film's fields");
         Film film = FilmMapper.mapToFilm(request);
-        getMpa(film.getMpa().getId());
+        mpaService.getMpa(film.getMpa().getId());
         checkGenres(film.getGenres());
         checkFields(film);
         Film createdFilm = filmStorage.addFilm(film);
@@ -57,12 +65,11 @@ public class FilmService {
         }
         Film film = getFilm(request.getId());
         if (request.hasMpa()) {
-            getMpa(request.getMpa().getId());
+            mpaService.getMpa(request.getMpa().getId());
         }
         if (request.hasGenres()) {
             checkGenres(request.getGenres());
         }
-        filmStorage.deleteFilmGenres(film.getId());
         Film updatedFilm = FilmMapper.updateFilmFields(film, request);
 
         return filmStorage.update(updatedFilm);
@@ -91,14 +98,6 @@ public class FilmService {
         return filmStorage.getPopularFilms(count);
     }
 
-    public List<Genre> getAllGenres() {
-        return filmStorage.getAllGenres();
-    }
-
-    public List<Mpa> getAllMpa() {
-        return filmStorage.getAllMpa();
-    }
-
     private void checkFields(Film film) {
         if (film.getDescription().length() > 200) {
             log.error("Error: maximum length exceeded");
@@ -115,9 +114,9 @@ public class FilmService {
         }
     }
 
-    public void checkGenres(List<Genre> genres) {
+    private void checkGenres(List<Genre> genres) {
         if (genres != null && !genres.isEmpty()) {
-            List<Genre> genresDb = getAllGenres();
+            List<Genre> genresDb = genreService.getAllGenres();
             Set<Integer> uniqueIds = new HashSet<>();
 
             for (Genre genre : genres) {
@@ -145,21 +144,4 @@ public class FilmService {
         }
         return filmOptional.get();
     }
-
-    public Mpa getMpa(Integer mpaId) {
-        Optional<Mpa> mpaOptional = filmStorage.findMpaById(mpaId);
-        if (mpaOptional.isEmpty()) {
-            throw new NotFoundException("MPA с id = " + mpaId + " не найден");
-        }
-        return mpaOptional.get();
-    }
-
-    public Genre getGenre(Integer genreId) {
-        Optional<Genre> genreOptional = filmStorage.findGenreById(genreId);
-        if (genreOptional.isEmpty()) {
-            throw new NotFoundException("MPA с id = " + genreId + " не найден");
-        }
-        return genreOptional.get();
-    }
-
 }

@@ -28,8 +28,8 @@ public class FilmRowMapper implements RowMapper<Film> {
         film.setMpa(mpa);
 
         List<Genre> genres = new ArrayList<>();
-        Array genresIdArray = resultSet.getArray("genres_id");
-        Array genresNameArray = resultSet.getArray("genres_name");
+        Array genresIdArray = resultSet.getArray("genre_id");
+        Array genresNameArray = resultSet.getArray("genre_name");
 
         if (genresIdArray != null && genresNameArray != null) {
             Object[] genresId = (Object[]) genresIdArray.getArray();

@@ -1,6 +1,7 @@
 package ru.yandex.practicum.filmorate.dto;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import lombok.Data;
 import ru.yandex.practicum.filmorate.model.Genre;
@@ -20,6 +21,7 @@ public class NewFilmRequest {
     private String releaseDate;
     @Positive
     private int duration;
+    @NotNull
     private Mpa mpa;
     private List<Genre> genres = new ArrayList<>();
 }
