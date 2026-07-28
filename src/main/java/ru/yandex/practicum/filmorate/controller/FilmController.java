@@ -4,6 +4,8 @@ import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+import ru.yandex.practicum.filmorate.dto.NewFilmRequest;
+import ru.yandex.practicum.filmorate.dto.UpdateFilmRequest;
 import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.service.film.FilmService;
 
@@ -21,12 +23,12 @@ public class FilmController {
     }
 
     @PostMapping
-    public Film addFilm(@Valid @RequestBody Film film) {
-        return filmService.addFilm(film);
+    public Film addFilm(@Valid @RequestBody NewFilmRequest request) {
+        return filmService.addFilm(request);
     }
 
     @PutMapping
-    public Film update(@Valid @RequestBody Film updateFilm) {
+    public Film update(@Valid @RequestBody UpdateFilmRequest updateFilm) {
         return filmService.update(updateFilm);
     }
 

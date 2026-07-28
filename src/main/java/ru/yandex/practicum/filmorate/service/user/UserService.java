@@ -2,9 +2,13 @@ package ru.yandex.practicum.filmorate.service.user;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
+import ru.yandex.practicum.filmorate.dto.NewUserRequest;
+import ru.yandex.practicum.filmorate.dto.UpdateUserRequest;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
+import ru.yandex.practicum.filmorate.mapper.UserMapper;
 import ru.yandex.practicum.filmorate.model.User;
 import ru.yandex.practicum.filmorate.storage.user.UserStorage;
 
@@ -12,7 +16,6 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 
 @Slf4j
 @Service
@@ -22,7 +25,7 @@ public class UserService {
     private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
     @Autowired
-    public UserService(UserStorage userStorage) {
+    public UserService(@Qualifier("userDbStorage") UserStorage userStorage) {
         this.userStorage = userStorage;
     }
 
@@ -30,28 +33,23 @@ public class UserService {
         return userStorage.getAllUsers();
     }
 
-    public User addUser(User user) {
-        log.debug("Check user's fields");
+    public User addUser(NewUserRequest request) {
+        User user = UserMapper.mapToUser(request);
         checkFields(user);
         User createdUser = userStorage.addUser(user);
-        log.debug("Added user");
+        log.debug("Added user with id={}", createdUser.getId());
         return createdUser;
     }
 
-    public User update(User user) {
-        if (user.getId() == 0) {
+    public User update(UpdateUserRequest request) {
+        if (request.getId() == 0) {
             log.error("Error: uninitialised id");
             throw new ValidationException("Id должен быть указан");
         }
-        if (userStorage.findById(user.getId()).isPresent()) {
-            log.debug("Check update user's fields");
-            checkFields(user);
-            User updateUser = userStorage.update(user);
-            log.debug("Updated user {}", updateUser.getLogin());
-            return updateUser;
-        }
-        log.error("Error: user with id {} isn't found", user.getId());
-        throw new NotFoundException("Пользователь с id = " + user.getId() + " не найден");
+        User updatedUser = userStorage.findById(request.getId())
+                .map(user -> UserMapper.updateUserFields(user, request))
+                .orElseThrow(() -> new NotFoundException("Пользователь не найден"));
+        return userStorage.update(updatedUser);
     }
 
     public void deleteUser(Integer id) {
@@ -62,43 +60,26 @@ public class UserService {
         User user = getUser(userId);
         User friend = getUser(friendId);
 
-        user.getFriends().add(friend.getId());
-        log.debug("User {} added as a friend {}", userId, friendId);
-        friend.getFriends().add(user.getId());
-        log.debug("User {} added as a friend to {}", userId, friendId);
+        userStorage.addFriend(userId, friendId);
     }
 
     public void deleteFriend(Integer userId, Integer friendId) {
         User user = getUser(userId);
         User friend = getUser(friendId);
 
-        user.getFriends().remove(friend.getId());
-        log.debug("Friend {} removed from user's {} friends", friendId, userId);
-        friend.getFriends().remove(user.getId());
-        log.debug("User {} removed from friend's {} friends", userId, friendId);
+        userStorage.deleteFriend(user, friend);
     }
 
     public List<User> getAllFriends(Integer userId) {
         User user = getUser(userId);
-        Set<Integer> friendsId = user.getFriends();
-        log.debug("Getting a list of friends");
-        return friendsId.stream()
-                .map(this::getUser)
-                .toList();
+        return userStorage.getAllFriends(userId);
     }
 
     public List<User> getSameFriends(Integer userId, Integer friendId) {
         User user = getUser(userId);
-        Set<Integer> friendsUser = user.getFriends();
-
         User friend = getUser(friendId);
-        Set<Integer> friendsFriend = friend.getFriends();
 
-        log.debug("Getting a list of identical friends");
-        return friendsUser.stream()
-                .filter(friendsFriend::contains)
-                .map(this::getUser)
-                .toList();
+        return userStorage.getSameFriends(user, friend);
     }
 
     private void checkFields(User user) {

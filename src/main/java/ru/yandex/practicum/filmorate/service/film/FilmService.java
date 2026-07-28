@@ -1,57 +1,78 @@
 package ru.yandex.practicum.filmorate.service.film;
 
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
+import ru.yandex.practicum.filmorate.dto.NewFilmRequest;
+import ru.yandex.practicum.filmorate.dto.UpdateFilmRequest;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
+import ru.yandex.practicum.filmorate.mapper.FilmMapper;
 import ru.yandex.practicum.filmorate.model.Film;
+import ru.yandex.practicum.filmorate.model.Genre;
+import ru.yandex.practicum.filmorate.service.genre.GenreService;
+import ru.yandex.practicum.filmorate.service.mpa.MpaService;
 import ru.yandex.practicum.filmorate.service.user.UserService;
 import ru.yandex.practicum.filmorate.storage.film.FilmStorage;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class FilmService {
 
     private final FilmStorage filmStorage;
     private final UserService userService;
+    private final GenreService genreService;
+    private final MpaService mpaService;
 
     private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private static final LocalDate MIN_RELEASE_DATE = LocalDate.parse("1895-12-28");
+
+    @Autowired
+    public FilmService(@Qualifier("filmDbStorage") FilmStorage filmStorage,
+                       UserService userService,
+                       GenreService genreService,
+                       MpaService mpaService) {
+        this.filmStorage = filmStorage;
+        this.userService = userService;
+        this.genreService = genreService;
+        this.mpaService = mpaService;
+    }
 
     public List<Film> getAllMovies() {
         return filmStorage.getAllMovies();
     }
 
-    public Film addFilm(Film film) {
+    public Film addFilm(NewFilmRequest request) {
         log.debug("Check film's fields");
+        Film film = FilmMapper.mapToFilm(request);
+        mpaService.getMpa(film.getMpa().getId());
+        checkGenres(film.getGenres());
         checkFields(film);
         Film createdFilm = filmStorage.addFilm(film);
         log.debug("Added film");
         return createdFilm;
     }
 
-    public Film update(Film film) {
-        if (film.getId() == 0) {
+    public Film update(UpdateFilmRequest request) {
+        if (request.getId() == 0) {
             log.error("Error: uninitialised id");
             throw new ValidationException("Id должен быть указан");
         }
-        if (filmStorage.findById(film.getId()).isPresent()) {
-            log.debug("Check update film's fields");
-            checkFields(film);
-            Film updateFilm = filmStorage.update(film);
-            log.debug("Updated film {}", film.getName());
-            return updateFilm;
+        Film film = getFilm(request.getId());
+        if (request.hasMpa()) {
+            mpaService.getMpa(request.getMpa().getId());
         }
-        log.error("Error: film with id {} isn't found", film.getId());
-        throw new NotFoundException("Фильм с id = " + film.getId() + " не найден");
+        if (request.hasGenres()) {
+            checkGenres(request.getGenres());
+        }
+        Film updatedFilm = FilmMapper.updateFilmFields(film, request);
+
+        return filmStorage.update(updatedFilm);
     }
 
     public void deleteFilm(Integer id) {
@@ -59,24 +80,22 @@ public class FilmService {
     }
 
     public void addLike(Integer filmId, Integer userId) {
-        Film film = getFilm(filmId);
-        film.getLikes().add(userService.getUser(userId).getId());
+        getFilm(filmId);
+        userService.getUser(userId);
+        filmStorage.addLike(filmId, userId);
         log.debug("User {} liked the film {}", userId, filmId);
     }
 
     public void deleteLike(Integer filmId, Integer userId) {
-        Film film = getFilm(filmId);
-        film.getLikes().remove(userService.getUser(userId).getId());
+        getFilm(filmId);
+        userService.getUser(userId);
+        filmStorage.deleteLike(filmId, userId);
         log.debug("User {} deleted the like for the film {}", userId, filmId);
     }
 
     public List<Film> getPopularFilms(int count) {
-        List<Film> films = filmStorage.getAllMovies();
         log.debug("Sorting movies by popularity");
-        return films.stream()
-                .sorted(Comparator.<Film>comparingInt(film -> film.getLikes().size()).reversed())
-                .limit(count)
-                .toList();
+        return filmStorage.getPopularFilms(count);
     }
 
     private void checkFields(Film film) {
@@ -92,6 +111,29 @@ public class FilmService {
         if (film.getDuration() == 0) {
             log.error("Error: uninitialised film's duration");
             throw new ValidationException("Продолжительность фильма не может быть пустой");
+        }
+    }
+
+    private void checkGenres(List<Genre> genres) {
+        if (genres != null && !genres.isEmpty()) {
+            List<Genre> genresDb = genreService.getAllGenres();
+            Set<Integer> uniqueIds = new HashSet<>();
+
+            for (Genre genre : genres) {
+                boolean exists = genresDb.stream()
+                        .anyMatch(genreDb ->
+                                genreDb.getId() == genre.getId()
+                        );
+
+                if (!exists) {
+                    throw new NotFoundException(
+                            "Жанр с id = " + genre.getId() + " не найден"
+                    );
+                }
+            }
+            genres.removeIf(genre ->
+                    !uniqueIds.add(genre.getId())
+            );
         }
     }
 
