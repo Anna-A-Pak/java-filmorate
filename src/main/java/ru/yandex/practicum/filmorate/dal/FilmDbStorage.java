@@ -128,6 +128,31 @@ public class FilmDbStorage extends BaseStorage implements FilmStorage {
             WHERE
               film_id = ?""";
 
+    private static final String GET_SEARСHING_FILMS = """
+            SELECT
+                f.*,
+                m.mpa_name,
+                array_agg(g.genre_id ORDER BY g.genre_id)
+                    FILTER (WHERE g.genre_id IS NOT NULL) AS genre_id,
+                array_agg(g.genre_name ORDER BY g.genre_id)
+                    FILTER (WHERE g.genre_id IS NOT NULL) AS genre_name
+            FROM films AS f
+            JOIN mpa AS m ON f.mpa_id = m.mpa_id
+            LEFT JOIN films_genres AS fg ON fg.film_id = f.film_id
+            LEFT JOIN genres AS g ON g.genre_id = fg.genre_id
+            LEFT JOIN (SELECT film_id,
+                              COUNT(*) AS likes_count
+                       FROM films_likes
+                       GROUP BY film_id) AS fl ON fl.film_id = f.film_id
+            WHERE LOWER(f.film_name) LIKE CONCAT(LOWER(?), '%')
+            GROUP BY
+                f.film_id,
+                m.mpa_id,
+                fl.likes_count
+            ORDER BY
+                COALESCE(fl.likes_count, 0) DESC,
+                f.film_id""";
+
     public List<Film> getAllMovies() {
         return jdbc.query(GET_ALL_QUERY, mapper);
     }
@@ -208,5 +233,11 @@ public class FilmDbStorage extends BaseStorage implements FilmStorage {
 
     public List<Film> getPopularFilms(int count) {
         return jdbc.query(GET_POPULAR_FILMS, mapper, count);
+    }
+
+    @Override
+    public List<Film> searchFilms(String title) {
+        List<Film> films = jdbc.query(GET_SEARСHING_FILMS, mapper, title) ;
+        return films;
     }
 }

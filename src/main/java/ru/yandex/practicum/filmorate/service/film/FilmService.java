@@ -144,4 +144,9 @@ public class FilmService {
         }
         return filmOptional.get();
     }
+
+    public List<Film> searchFilms(String title) {
+        log.debug("Searshing movies");
+        return filmStorage.searchFilms(title);
+    }
 }

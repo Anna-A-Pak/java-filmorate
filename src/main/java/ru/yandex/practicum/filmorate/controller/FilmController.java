@@ -58,4 +58,9 @@ public class FilmController {
     public Film findById(@PathVariable Integer id) {
         return filmService.getFilm(id);
     }
+
+    @GetMapping("/search")
+    public List<Film> searchFilms(@RequestParam String query) {
+        return filmService.searchFilms(query);
+    }
 }
