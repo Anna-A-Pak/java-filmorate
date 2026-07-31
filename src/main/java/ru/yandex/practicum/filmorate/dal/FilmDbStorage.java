@@ -5,6 +5,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 import ru.yandex.practicum.filmorate.dal.mappers.FilmRowMapper;
+import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.storage.film.FilmStorage;
 
@@ -197,8 +198,13 @@ public class FilmDbStorage extends BaseStorage implements FilmStorage {
         return film;
     }
 
+    @Override
     public void deleteFilm(Integer id) {
-        jdbc.update(DELETE_QUERY, id);
+        int rows = jdbc.update(DELETE_QUERY, id);
+
+        if (rows == 0) {
+            throw new NotFoundException("Фильм с id = " + id + " не найден");
+        }
     }
 
     public Optional<Film> findById(int filmId) {
