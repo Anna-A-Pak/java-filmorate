@@ -4,6 +4,7 @@ import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 import ru.yandex.practicum.filmorate.dal.mappers.UserRowMapper;
+import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.model.User;
 import ru.yandex.practicum.filmorate.storage.user.UserStorage;
 
@@ -129,8 +130,13 @@ public class UserDbStorage extends BaseStorage implements UserStorage {
         return user;
     }
 
+    @Override
     public void deleteUser(Integer id) {
-        jdbc.update(DELETE_QUERY, id);
+        int rows = jdbc.update(DELETE_QUERY, id);
+
+        if (rows == 0) {
+            throw new NotFoundException("Пользователь с id = " + id + " не найден");
+        }
     }
 
     public Optional<User> findById(int userId) {
