@@ -129,6 +129,37 @@ public class FilmDbStorage extends BaseStorage implements FilmStorage {
             WHERE
               film_id = ?""";
 
+    private static final String GET_COMMON_FILMS = """
+            SELECT films_f.*
+            FROM films_likes AS fl
+            LEFT JOIN
+              (SELECT film_id,
+                      COUNT(*) AS likes_count
+               FROM films_likes
+               GROUP BY film_id) AS films_l ON fl.film_id = films_l.film_id
+            LEFT JOIN
+              (SELECT fs.*,
+                      m.mpa_name,
+                      array_agg(g.genre_id
+                                ORDER BY g.genre_id) FILTER (
+                                                             WHERE g.genre_id IS NOT NULL) AS genre_id,
+                      array_agg(g.genre_name
+                                ORDER BY g.genre_id) FILTER (
+                                                             WHERE g.genre_id IS NOT NULL) AS genre_name
+               FROM films AS fs
+               JOIN mpa AS m ON fs.mpa_id = m.mpa_id
+               LEFT JOIN films_genres AS fg ON fg.film_id = fs.film_id
+               LEFT JOIN genres AS g ON g.genre_id = fg.genre_id
+               GROUP BY fs.film_id,
+                        m.mpa_id) AS films_f ON fl.film_id =films_f.film_id
+            WHERE fl.film_id IN
+                (SELECT f.film_id
+                 FROM films_likes AS f
+                 WHERE f.user_id = ?)
+              AND fl.user_id = ?
+            ORDER BY likes_count DESC,
+                     fl.film_id""";
+
     public List<Film> getAllMovies() {
         return jdbc.query(GET_ALL_QUERY, mapper);
     }
@@ -214,5 +245,9 @@ public class FilmDbStorage extends BaseStorage implements FilmStorage {
 
     public List<Film> getPopularFilms(int count) {
         return jdbc.query(GET_POPULAR_FILMS, mapper, count);
+    }
+
+    public List<Film> getCommonFilms(Integer userId, Integer friendId) {
+        return jdbc.query(GET_COMMON_FILMS, mapper, userId, friendId);
     }
 }
