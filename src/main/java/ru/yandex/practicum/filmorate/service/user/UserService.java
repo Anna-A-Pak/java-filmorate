@@ -9,6 +9,7 @@ import ru.yandex.practicum.filmorate.dto.UpdateUserRequest;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.mapper.UserMapper;
+import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.model.User;
 import ru.yandex.practicum.filmorate.storage.user.UserStorage;
 
@@ -80,6 +81,10 @@ public class UserService {
         User friend = getUser(friendId);
 
         return userStorage.getSameFriends(user, friend);
+    }
+
+    public List<Film> getRecommendations(Integer id) {
+        return userStorage.getRecommendations(id);
     }
 
     private void checkFields(User user) {

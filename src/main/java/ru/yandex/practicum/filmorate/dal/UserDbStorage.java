@@ -3,7 +3,9 @@ package ru.yandex.practicum.filmorate.dal;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
+import ru.yandex.practicum.filmorate.dal.mappers.FilmRowMapper;
 import ru.yandex.practicum.filmorate.dal.mappers.UserRowMapper;
+import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.model.User;
 import ru.yandex.practicum.filmorate.storage.user.UserStorage;
@@ -16,10 +18,12 @@ import java.util.Optional;
 public class UserDbStorage extends BaseStorage implements UserStorage {
 
     private final UserRowMapper mapper;
+    private final FilmRowMapper filmMapper;
 
-    public UserDbStorage(JdbcTemplate jdbc, UserRowMapper mapper) {
+    public UserDbStorage(JdbcTemplate jdbc, UserRowMapper mapper, FilmRowMapper filmMapper) {
         super(jdbc);
         this.mapper = mapper;
+        this.filmMapper = filmMapper;
     }
 
     private static final String GET_ALL_QUERY = """
@@ -102,6 +106,48 @@ public class UserDbStorage extends BaseStorage implements UserStorage {
                   fs.user_id = ?
               )""";
 
+    private static final String GET_RECOMMENDATIONS = """
+            WITH user_likes AS
+              (SELECT film_id,
+                      user_id
+               FROM films_likes
+               WHERE user_id = ?)
+            SELECT f.*
+            FROM films_likes AS films_l
+            LEFT JOIN
+              (SELECT fs.*,
+                      m.mpa_name,
+                      array_agg(g.genre_id
+                                ORDER BY g.genre_id) FILTER (
+                                                             WHERE g.genre_id IS NOT NULL) AS genre_id,
+                      array_agg(g.genre_name
+                                ORDER BY g.genre_id) FILTER (
+                                                             WHERE g.genre_id IS NOT NULL) AS genre_name
+               FROM films AS fs
+               JOIN mpa AS m ON fs.mpa_id = m.mpa_id
+               LEFT JOIN films_genres AS fg ON fg.film_id = fs.film_id
+               LEFT JOIN genres AS g ON g.genre_id = fg.genre_id
+               GROUP BY fs.film_id,
+                        m.mpa_id) AS f ON films_l.film_id = f.film_id
+            WHERE films_l.user_id =
+                (SELECT fl.user_id
+                 FROM films_likes AS fl
+                 RIGHT JOIN user_likes AS ul ON fl.film_id = ul.film_id
+                 WHERE fl.user_id <> ul.user_id
+                   AND EXISTS
+                     (SELECT 1
+                      FROM films_likes AS candidate_likes
+                      WHERE candidate_likes.user_id = fl.user_id
+                        AND candidate_likes.film_id NOT IN
+                          (SELECT film_id
+                           FROM user_likes))
+                 GROUP BY fl.user_id
+                 ORDER BY count(*) DESC
+                 LIMIT 1)
+              AND films_l.film_id NOT IN
+                (SELECT film_id
+                 FROM user_likes)""";
+
     public List<User> getAllUsers() {
         return jdbc.query(GET_ALL_QUERY, mapper);
     }
@@ -180,5 +226,9 @@ public class UserDbStorage extends BaseStorage implements UserStorage {
 
             return sameFriend;
         }, user.getId(), friend.getId());
+    }
+
+    public List<Film> getRecommendations(Integer id) {
+        return jdbc.query(GET_RECOMMENDATIONS, filmMapper, id);
     }
 }
