@@ -237,7 +237,7 @@ public class FilmDbStorage extends BaseStorage implements FilmStorage {
 
     @Override
     public List<Film> searchFilms(String title) {
-        List<Film> films = jdbc.query(GET_SEARСHING_FILMS, mapper, title) ;
+        List<Film> films = jdbc.query(GET_SEARСHING_FILMS, mapper, title);
         return films;
     }
 }
