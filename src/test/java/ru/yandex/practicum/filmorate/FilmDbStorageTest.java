@@ -168,7 +168,7 @@ class FilmDbStorageTest {
         filmStorage.addLike(film2.getId(), user3.getId());
         filmStorage.addLike(film2.getId(), user4.getId());
 
-        List<Film> popularFilms = filmStorage.getPopularFilms(3);
+        List<Film> popularFilms = filmStorage.getPopularFilms(3, null, null);
 
         assertThat(popularFilms)
                 .extracting(Film::getId)
