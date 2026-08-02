@@ -77,6 +77,8 @@ public class FilmService {
         }
         if (request.hasDirectors()) {
             checkDirectors(request.getDirectors());
+        } else {
+            film.setDirectors(new ArrayList<>());
         }
         Film updatedFilm = FilmMapper.updateFilmFields(film, request);
 

@@ -6,7 +6,6 @@ import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 import ru.yandex.practicum.filmorate.dal.mappers.FilmRowMapper;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
-import ru.yandex.practicum.filmorate.model.Director;
 import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.storage.film.FilmStorage;
 
@@ -26,27 +25,39 @@ public class FilmDbStorage extends BaseStorage implements FilmStorage {
 	private static final String GET_ALL_QUERY = """
 			SELECT f.*,
 			       m.mpa_name,
-			       array_agg(g.genre_id ORDER BY g.genre_id)
+			       array_agg(DISTINCT g.genre_id ORDER BY g.genre_id)
 			           FILTER (WHERE g.genre_id IS NOT NULL) AS genre_id,
-			       array_agg(g.genre_name ORDER BY g.genre_id)
-			           FILTER (WHERE g.genre_id IS NOT NULL) AS genre_name
+			       array_agg(DISTINCT g.genre_name ORDER BY g.genre_id)
+			           FILTER (WHERE g.genre_id IS NOT NULL) AS genre_name,
+			       array_agg(DISTINCT d.director_id ORDER BY d.director_id)
+			           FILTER (WHERE d.director_id IS NOT NULL) AS director_id,
+			       array_agg(DISTINCT d.director_name ORDER BY d.director_id)
+			           FILTER (WHERE d.director_id IS NOT NULL) AS director_name
 			FROM films AS f
 			JOIN mpa AS m ON f.mpa_id = m.mpa_id
 			LEFT JOIN films_genres AS fg ON fg.film_id = f.film_id
 			LEFT JOIN genres AS g ON g.genre_id = fg.genre_id
+			LEFT JOIN films_directors AS fd ON fd.film_id = f.film_id
+			LEFT JOIN directors AS d ON d.director_id = fd.director_id
 			GROUP BY f.film_id, m.mpa_id""";
 
 	private static final String FIND_BY_ID_QUERY = """
 			SELECT f.*,
 			       m.mpa_name,
-			       array_agg(g.genre_id ORDER BY g.genre_id)
+			       array_agg(DISTINCT g.genre_id ORDER BY g.genre_id)
 			           FILTER (WHERE g.genre_id IS NOT NULL) AS genre_id,
-			       array_agg(g.genre_name ORDER BY g.genre_id)
-			           FILTER (WHERE g.genre_id IS NOT NULL) AS genre_name
+			       array_agg(DISTINCT g.genre_name ORDER BY g.genre_id)
+			           FILTER (WHERE g.genre_id IS NOT NULL) AS genre_name,
+			       array_agg(DISTINCT d.director_id ORDER BY d.director_id)
+			           FILTER (WHERE d.director_id IS NOT NULL) AS director_id,
+			       array_agg(DISTINCT d.director_name ORDER BY d.director_id)
+			           FILTER (WHERE d.director_id IS NOT NULL) AS director_name
 			FROM films AS f
 			JOIN mpa AS m ON f.mpa_id = m.mpa_id
 			LEFT JOIN films_genres AS fg ON fg.film_id = f.film_id
 			LEFT JOIN genres AS g ON g.genre_id = fg.genre_id
+			LEFT JOIN films_directors AS fd ON fd.film_id = f.film_id
+			LEFT JOIN directors AS d ON d.director_id = fd.director_id
 			WHERE
 			  f.film_id = ?
 			GROUP BY f.film_id, m.mpa_id""";
@@ -97,83 +108,118 @@ public class FilmDbStorage extends BaseStorage implements FilmStorage {
 			  film_id = ?
 			  AND user_id = ?""";
 
-    private static final String GET_POPULAR_FILMS_WITH_FILTERS = """
-        SELECT
-            f.*,
-            m.mpa_name,
-            array_agg(g.genre_id ORDER BY g.genre_id)
-                FILTER (WHERE g.genre_id IS NOT NULL) AS genre_id,
-            array_agg(g.genre_name ORDER BY g.genre_id)
-                FILTER (WHERE g.genre_id IS NOT NULL) AS genre_name
-        FROM films AS f
-        JOIN mpa AS m ON f.mpa_id = m.mpa_id
-        LEFT JOIN films_genres AS fg ON fg.film_id = f.film_id
-        LEFT JOIN genres AS g ON g.genre_id = fg.genre_id
-        LEFT JOIN (
-            SELECT film_id, COUNT(*) AS likes_count
-            FROM films_likes
-            GROUP BY film_id
-        ) AS fl ON fl.film_id = f.film_id
-        WHERE (CAST(? AS INTEGER) IS NULL OR EXTRACT(YEAR FROM f.release_date) = ?)
-          AND (CAST(? AS INTEGER) IS NULL OR f.film_id IN (
-              SELECT film_id FROM films_genres WHERE genre_id = ?
-          ))
-        GROUP BY f.film_id, m.mpa_id, fl.likes_count
-        ORDER BY COALESCE(fl.likes_count, 0) DESC, f.film_id
-        LIMIT ?""";
+	private static final String GET_POPULAR_FILMS_WITH_FILTERS = """
+			SELECT
+			    f.*,
+			    m.mpa_name,
+			    array_agg(DISTINCT g.genre_id ORDER BY g.genre_id)
+			           FILTER (WHERE g.genre_id IS NOT NULL) AS genre_id,
+			    array_agg(DISTINCT g.genre_name ORDER BY g.genre_id)
+			           FILTER (WHERE g.genre_id IS NOT NULL) AS genre_name,
+			    array_agg(DISTINCT d.director_id ORDER BY d.director_id)
+			           FILTER (WHERE d.director_id IS NOT NULL) AS director_id,
+			    array_agg(DISTINCT d.director_name ORDER BY d.director_id)
+			           FILTER (WHERE d.director_id IS NOT NULL) AS director_name
+			FROM films AS f
+			JOIN mpa AS m ON f.mpa_id = m.mpa_id
+			LEFT JOIN films_genres AS fg ON fg.film_id = f.film_id
+			LEFT JOIN genres AS g ON g.genre_id = fg.genre_id
+			LEFT JOIN films_directors AS fd ON fd.film_id = f.film_id
+			LEFT JOIN directors AS d ON d.director_id = fd.director_id
+			LEFT JOIN (
+			    SELECT film_id, COUNT(*) AS likes_count
+			    FROM films_likes
+			    GROUP BY film_id
+			) AS fl ON fl.film_id = f.film_id
+			WHERE (CAST(? AS INTEGER) IS NULL OR EXTRACT(YEAR FROM f.release_date) = ?)
+			  AND (CAST(? AS INTEGER) IS NULL OR f.film_id IN (
+			      SELECT film_id FROM films_genres WHERE genre_id = ?
+			  ))
+			GROUP BY f.film_id, m.mpa_id, fl.likes_count
+			ORDER BY COALESCE(fl.likes_count, 0) DESC, f.film_id
+			LIMIT ?""";
 
 	private static final String DELETE_QUERY = """
 			DELETE FROM films
 			WHERE
 			  film_id = ?""";
 
-    private static final String GET_COMMON_FILMS = """
-            SELECT films_f.*
-            FROM films_likes AS fl
-            LEFT JOIN
-              (SELECT film_id,
-                      COUNT(*) AS likes_count
-               FROM films_likes
-               GROUP BY film_id) AS films_l ON fl.film_id = films_l.film_id
-            LEFT JOIN
-              (SELECT fs.*,
-                      m.mpa_name,
-                      array_agg(g.genre_id
-                                ORDER BY g.genre_id) FILTER (
-                                                             WHERE g.genre_id IS NOT NULL) AS genre_id,
-                      array_agg(g.genre_name
-                                ORDER BY g.genre_id) FILTER (
-                                                             WHERE g.genre_id IS NOT NULL) AS genre_name
-               FROM films AS fs
-               JOIN mpa AS m ON fs.mpa_id = m.mpa_id
-               LEFT JOIN films_genres AS fg ON fg.film_id = fs.film_id
-               LEFT JOIN genres AS g ON g.genre_id = fg.genre_id
-               GROUP BY fs.film_id,
-                        m.mpa_id) AS films_f ON fl.film_id =films_f.film_id
-            WHERE fl.film_id IN
-                (SELECT f.film_id
-                 FROM films_likes AS f
-                 WHERE f.user_id = ?)
-              AND fl.user_id = ?
-            ORDER BY likes_count DESC,
-                     fl.film_id""";
+	private static final String GET_COMMON_FILMS = """
+			SELECT films_f.*
+			FROM films_likes AS fl
+			LEFT JOIN
+			  (SELECT film_id,
+			          COUNT(*) AS likes_count
+			   FROM films_likes
+			   GROUP BY film_id) AS films_l ON fl.film_id = films_l.film_id
+			LEFT JOIN
+			  (SELECT fs.*,
+			          m.mpa_name,
+			          array_agg(g.genre_id
+			                    ORDER BY g.genre_id) FILTER (
+			                                                 WHERE g.genre_id IS NOT NULL) AS genre_id,
+			          array_agg(g.genre_name
+			                    ORDER BY g.genre_id) FILTER (
+			                                                 WHERE g.genre_id IS NOT NULL) AS genre_name,
+			          array_agg(DISTINCT d.director_id ORDER BY d.director_id)
+			              FILTER (WHERE d.director_id IS NOT NULL) AS director_id,
+			           array_agg(DISTINCT d.director_name ORDER BY d.director_id)
+			              FILTER (WHERE d.director_id IS NOT NULL) AS director_name
+			   FROM films AS fs
+			   JOIN mpa AS m ON fs.mpa_id = m.mpa_id
+			   LEFT JOIN films_genres AS fg ON fg.film_id = fs.film_id
+			   LEFT JOIN genres AS g ON g.genre_id = fg.genre_id
+			   LEFT JOIN films_directors AS fd ON fd.film_id = fs.film_id
+			   LEFT JOIN directors AS d ON d.director_id = fd.director_id
+			   GROUP BY fs.film_id,
+			            m.mpa_id) AS films_f ON fl.film_id =films_f.film_id
+			WHERE fl.film_id IN
+			    (SELECT f.film_id
+			     FROM films_likes AS f
+			     WHERE f.user_id = ?)
+			  AND fl.user_id = ?
+			ORDER BY likes_count DESC,
+			         fl.film_id""";
 
 	private static final String GET_DIRECTOR_FILMS_SORT_YEARS = """
 			SELECT f.*,
-			       m.mpa_name
+			       m.mpa_name,
+			       array_agg(DISTINCT g.genre_id ORDER BY g.genre_id)
+			           FILTER (WHERE g.genre_id IS NOT NULL) AS genre_id,
+			       array_agg(DISTINCT g.genre_name ORDER BY g.genre_id)
+			           FILTER (WHERE g.genre_id IS NOT NULL) AS genre_name,
+			       array_agg(DISTINCT d.director_id ORDER BY d.director_id)
+			           FILTER (WHERE d.director_id IS NOT NULL) AS director_id,
+			       array_agg(DISTINCT d.director_name ORDER BY d.director_id)
+			           FILTER (WHERE d.director_id IS NOT NULL) AS director_name
 			FROM films f
 			JOIN mpa m ON f.mpa_id = m.mpa_id
-			JOIN films_directors fd ON f.film_id = fd.film_id
+			LEFT JOIN films_genres AS fg ON fg.film_id = f.film_id
+			LEFT JOIN genres AS g ON g.genre_id = fg.genre_id
+			LEFT JOIN films_directors AS fd ON fd.film_id = f.film_id
+			LEFT JOIN directors AS d ON d.director_id = fd.director_id
 			WHERE fd.director_id = ?
+			GROUP BY f.film_id, m.mpa_id
 			ORDER BY f.release_date""";
 
 	private static final String GET_DIRECTOR_FILMS_SORT_LIKES = """
 			SELECT f.*,
 				   m.mpa_name,
-				   COUNT(l.user_id) AS rate
+				   COUNT(l.user_id) AS rate,
+				   array_agg(DISTINCT g.genre_id ORDER BY g.genre_id)
+			           FILTER (WHERE g.genre_id IS NOT NULL) AS genre_id,
+			       array_agg(DISTINCT g.genre_name ORDER BY g.genre_id)
+			           FILTER (WHERE g.genre_id IS NOT NULL) AS genre_name,
+			       array_agg(DISTINCT d.director_id ORDER BY d.director_id)
+			           FILTER (WHERE d.director_id IS NOT NULL) AS director_id,
+			       array_agg(DISTINCT d.director_name ORDER BY d.director_id)
+			           FILTER (WHERE d.director_id IS NOT NULL) AS director_name
 			FROM films f
 			JOIN mpa m ON f.mpa_id = m.mpa_id
-			JOIN films_directors fd ON f.film_id = fd.film_id
+			LEFT JOIN films_genres AS fg ON fg.film_id = f.film_id
+			LEFT JOIN genres AS g ON g.genre_id = fg.genre_id
+			LEFT JOIN films_directors AS fd ON fd.film_id = f.film_id
+			LEFT JOIN directors AS d ON d.director_id = fd.director_id
 			LEFT JOIN films_likes l ON f.film_id = l.film_id
 			WHERE fd.director_id = ?
 			GROUP BY f.film_id, m.mpa_id
@@ -183,9 +229,8 @@ public class FilmDbStorage extends BaseStorage implements FilmStorage {
 			INSERT INTO films_directors (film_id, director_id)
 			VALUES (?, ?)""";
 
-	private static final String DELETE_DIRECTORS_FOR_FILM = """
-			DELETE
-			FROM films_directors
+	private static final String DELETE_FILMS_DIRECTORS = """
+			DELETE FROM films_directors
 			WHERE film_id = ?""";
 
 	private static final String GET_DIRECTORS_BY_FILM_ID = """
@@ -228,6 +273,7 @@ public class FilmDbStorage extends BaseStorage implements FilmStorage {
 		);
 		deleteFilmGenres(film.getId());
 		addFilmGenres(film);
+		deleteFilmDirectors(film.getId());
 		updateFilmDirectors(film);
 		return findById(film.getId()).get();
 	}
@@ -244,9 +290,6 @@ public class FilmDbStorage extends BaseStorage implements FilmStorage {
 	public Optional<Film> findById(int filmId) {
 		try {
 			Film result = jdbc.queryForObject(FIND_BY_ID_QUERY, mapper, filmId);
-			if (result != null) {
-				result.setDirectors(getDirectorsForFilm(filmId));
-			}
 			return Optional.ofNullable(result);
 		} catch (EmptyResultDataAccessException ignored) {
 			return Optional.empty();
@@ -280,18 +323,17 @@ public class FilmDbStorage extends BaseStorage implements FilmStorage {
 		jdbc.update(DELETE_LIKES_QUERY, filmId, userId);
 	}
 
-    @Override
-    public List<Film> getPopularFilms(int count, Integer genreId, Integer year) {
-        return jdbc.query(GET_POPULAR_FILMS_WITH_FILTERS, mapper,
-                year, year, genreId, genreId, count);
-    }
+	@Override
+	public List<Film> getPopularFilms(int count, Integer genreId, Integer year) {
+		return jdbc.query(GET_POPULAR_FILMS_WITH_FILTERS, mapper,
+				year, year, genreId, genreId, count);
+	}
 
-    public List<Film> getCommonFilms(Integer userId, Integer friendId) {
-        return jdbc.query(GET_COMMON_FILMS, mapper, userId, friendId);
-    }
+	public List<Film> getCommonFilms(Integer userId, Integer friendId) {
+		return jdbc.query(GET_COMMON_FILMS, mapper, userId, friendId);
+	}
 
 	public void updateFilmDirectors(Film film) {
-		jdbc.update(DELETE_DIRECTORS_FOR_FILM, film.getId());
 		if (film.getDirectors() == null || film.getDirectors().isEmpty()) {
 			return;
 		}
@@ -307,23 +349,11 @@ public class FilmDbStorage extends BaseStorage implements FilmStorage {
 	}
 
 	public List<Film> getFilmsByDirector(Integer directorId, String sortBy) {
-		String sql = "";
-		if ("year".equals(sortBy)) {
-			sql = GET_DIRECTOR_FILMS_SORT_YEARS;
-		} else {
-			sql = GET_DIRECTOR_FILMS_SORT_LIKES;
-		}
-		List<Film> films = jdbc.query(sql, mapper, directorId);
-		for (Film film : films) {
-			film.setDirectors(getDirectorsForFilm(film.getId()));
-		}
-		return films;
+		String sql = "year".equals(sortBy) ? GET_DIRECTOR_FILMS_SORT_YEARS : GET_DIRECTOR_FILMS_SORT_LIKES;
+		return jdbc.query(sql, mapper, directorId);
 	}
 
-	private List<Director> getDirectorsForFilm(int filmId) {
-		return jdbc.query(GET_DIRECTORS_BY_FILM_ID, (rs, rowNum) -> new Director(
-				rs.getInt("director_id"),
-				rs.getString("director_name")
-		), filmId);
+	private void deleteFilmDirectors(Integer filmId) {
+		jdbc.update(DELETE_FILMS_DIRECTORS, filmId);
 	}
 }
