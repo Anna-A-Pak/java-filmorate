@@ -222,7 +222,7 @@ public class FilmDbStorage extends BaseStorage implements FilmStorage {
 			LEFT JOIN directors AS d ON d.director_id = fd.director_id
 			LEFT JOIN films_likes l ON f.film_id = l.film_id
 			WHERE fd.director_id = ?
-			GROUP BY f.film_id, m.mpa_id
+			GROUP BY f.film_id, f.film_name, f.description, f.release_date, f.duration, f.mpa_id, m.mpa_id, m.mpa_name
 			ORDER BY rate DESC""";
 
 	private static final String INSERT_FILMS_DIRECTORS_QUERY = """
