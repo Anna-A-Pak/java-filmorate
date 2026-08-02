@@ -65,11 +65,6 @@ public class ReviewDbStorage extends BaseStorage implements ReviewStorage {
             SET useful = useful + ?
             WHERE review_id = ?""";
 
-    private static final String DECREMENT_USEFUL = """
-            UPDATE reviews
-            SET useful = useful - 1
-            WHERE review_id = ?""";
-
     private static final String INSERT_USERS_RATINGS = """
             INSERT INTO
               users_ratings (review_id, user_id, is_positive)
