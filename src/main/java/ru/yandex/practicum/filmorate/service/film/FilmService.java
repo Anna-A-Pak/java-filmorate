@@ -93,9 +93,9 @@ public class FilmService {
         log.debug("User {} deleted the like for the film {}", userId, filmId);
     }
 
-    public List<Film> getPopularFilms(int count) {
-        log.debug("Sorting movies by popularity");
-        return filmStorage.getPopularFilms(count);
+    public List<Film> getPopularFilms(int count, Integer genreId, Integer year) {
+        log.debug("Sorting movies by popularity, genreId={}, year={}", genreId, year);
+        return filmStorage.getPopularFilms(count, genreId, year);
     }
 
     public List<Film> getCommonFilms(Integer userId, Integer friendId) {

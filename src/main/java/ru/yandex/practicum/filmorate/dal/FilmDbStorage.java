@@ -96,33 +96,31 @@ public class FilmDbStorage extends BaseStorage implements FilmStorage {
               film_id = ?
               AND user_id = ?""";
 
-    private static final String GET_POPULAR_FILMS = """
-            SELECT
-                f.*,
-                m.mpa_name,
-                array_agg(g.genre_id ORDER BY g.genre_id)
-                    FILTER (WHERE g.genre_id IS NOT NULL) AS genre_id,
-                array_agg(g.genre_name ORDER BY g.genre_id)
-                    FILTER (WHERE g.genre_id IS NOT NULL) AS genre_name
-            FROM films AS f
-            JOIN mpa AS m ON f.mpa_id = m.mpa_id
-            LEFT JOIN films_genres AS fg ON fg.film_id = f.film_id
-            LEFT JOIN genres AS g ON g.genre_id = fg.genre_id
-            LEFT JOIN (
-                SELECT
-                    film_id,
-                    COUNT(*) AS likes_count
-                FROM films_likes
-                GROUP BY film_id
-            ) AS fl ON fl.film_id = f.film_id
-            GROUP BY
-                f.film_id,
-                m.mpa_id,
-                fl.likes_count
-            ORDER BY
-                COALESCE(fl.likes_count, 0) DESC,
-                f.film_id
-            LIMIT ?""";
+
+    private static final String GET_POPULAR_FILMS_WITH_FILTERS = """
+        SELECT
+            f.*,
+            m.mpa_name,
+            array_agg(g.genre_id ORDER BY g.genre_id)
+                FILTER (WHERE g.genre_id IS NOT NULL) AS genre_id,
+            array_agg(g.genre_name ORDER BY g.genre_id)
+                FILTER (WHERE g.genre_id IS NOT NULL) AS genre_name
+        FROM films AS f
+        JOIN mpa AS m ON f.mpa_id = m.mpa_id
+        LEFT JOIN films_genres AS fg ON fg.film_id = f.film_id
+        LEFT JOIN genres AS g ON g.genre_id = fg.genre_id
+        LEFT JOIN (
+            SELECT film_id, COUNT(*) AS likes_count
+            FROM films_likes
+            GROUP BY film_id
+        ) AS fl ON fl.film_id = f.film_id
+        WHERE (CAST(? AS INTEGER) IS NULL OR EXTRACT(YEAR FROM f.release_date) = ?)
+          AND (CAST(? AS INTEGER) IS NULL OR f.film_id IN (
+              SELECT film_id FROM films_genres WHERE genre_id = ?
+          ))
+        GROUP BY f.film_id, m.mpa_id, fl.likes_count
+        ORDER BY COALESCE(fl.likes_count, 0) DESC, f.film_id
+        LIMIT ?""";
 
     private static final String DELETE_QUERY = """
             DELETE FROM films
@@ -243,8 +241,12 @@ public class FilmDbStorage extends BaseStorage implements FilmStorage {
         jdbc.update(DELETE_LIKES_QUERY, filmId, userId);
     }
 
-    public List<Film> getPopularFilms(int count) {
-        return jdbc.query(GET_POPULAR_FILMS, mapper, count);
+
+
+    @Override
+    public List<Film> getPopularFilms(int count, Integer genreId, Integer year) {
+        return jdbc.query(GET_POPULAR_FILMS_WITH_FILTERS, mapper,
+                year, year, genreId, genreId, count);
     }
 
     public List<Film> getCommonFilms(Integer userId, Integer friendId) {
