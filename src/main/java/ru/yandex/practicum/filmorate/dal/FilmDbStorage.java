@@ -6,7 +6,6 @@ import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 import ru.yandex.practicum.filmorate.dal.mappers.FilmRowMapper;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
-import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.model.Director;
 import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.storage.film.FilmStorage;
@@ -158,6 +157,43 @@ public class FilmDbStorage extends BaseStorage implements FilmStorage {
               AND fl.user_id = ?
             ORDER BY likes_count DESC,
                      fl.film_id""";
+
+	private static final String GET_DIRECTOR_FILMS_SORT_YEARS = """
+			SELECT f.*,
+			       m.mpa_name
+			FROM films f
+			JOIN mpa m ON f.mpa_id = m.mpa_id
+			JOIN films_directors fd ON f.film_id = fd.film_id
+			WHERE fd.director_id = ?
+			ORDER BY f.release_date""";
+
+	private static final String GET_DIRECTOR_FILMS_SORT_LIKES = """
+			SELECT f.*,
+				   m.mpa_name,
+				   COUNT(l.user_id) AS rate
+			FROM films f
+			JOIN mpa m ON f.mpa_id = m.mpa_id
+			JOIN films_directors fd ON f.film_id = fd.film_id
+			LEFT JOIN films_likes l ON f.film_id = l.film_id
+			WHERE fd.director_id = ?
+			GROUP BY f.film_id, m.mpa_id
+			ORDER BY rate DESC""";
+
+	private static final String INSERT_FILMS_DIRECTORS_QUERY = """
+			INSERT INTO films_directors (film_id, director_id)
+			VALUES (?, ?)""";
+
+	private static final String DELETE_DIRECTORS_FOR_FILM = """
+			DELETE
+			FROM films_directors
+			WHERE film_id = ?""";
+
+	private static final String GET_DIRECTORS_BY_FILM_ID = """
+			SELECT d.director_id,
+				   d.director_name
+			FROM directors d
+			JOIN films_directors fd ON d.director_id = fd.director_id
+			WHERE fd.film_id = ?""";
 
 	public List<Film> getAllMovies() {
 		return jdbc.query(GET_ALL_QUERY, mapper);

@@ -39,6 +39,7 @@ public class FilmRowMapper implements RowMapper<Film> {
 				}
 			}
 		} catch (SQLException e) {
+			e.printStackTrace();
 		}
 		film.setGenres(genres);
 		film.setDirectors(new ArrayList<>());

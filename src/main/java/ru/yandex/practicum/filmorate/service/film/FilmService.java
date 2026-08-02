@@ -110,10 +110,6 @@ public class FilmService {
         return filmStorage.getCommonFilms(userId, friendId);
     }
 
-    public List<Film> getCommonFilms(Integer userId, Integer friendId) {
-        return filmStorage.getCommonFilms(userId, friendId);
-    }
-
     private void checkFields(Film film) {
         if (film.getDescription().length() > 200) {
             log.error("Error: maximum length exceeded");
