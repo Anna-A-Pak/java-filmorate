@@ -10,10 +10,7 @@ import ru.yandex.practicum.filmorate.dto.UpdateUserRequest;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.mapper.UserMapper;
-import ru.yandex.practicum.filmorate.model.EventType;
-import ru.yandex.practicum.filmorate.model.Film;
-import ru.yandex.practicum.filmorate.model.Operation;
-import ru.yandex.practicum.filmorate.model.User;
+import ru.yandex.practicum.filmorate.model.*;
 import ru.yandex.practicum.filmorate.service.event.EventService;
 import ru.yandex.practicum.filmorate.storage.user.UserStorage;
 
@@ -96,6 +93,11 @@ public class UserService {
 
     public List<Film> getRecommendations(Integer id) {
         return userStorage.getRecommendations(id);
+    }
+
+    public List<Event> getEvents(Integer userId) {
+        getUser(userId);
+        return eventService.getEvents(userId);
     }
 
     private void checkFields(User user) {

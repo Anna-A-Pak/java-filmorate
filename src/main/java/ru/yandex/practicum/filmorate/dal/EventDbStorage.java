@@ -29,19 +29,19 @@ public class EventDbStorage extends BaseStorage implements EventStorage {
             FROM
               events
             WHERE
-              user_id = ?""";
+              user_id = ?
+            ORDER BY event_id""";
 
     @Override
     public void addEvent(Event event) {
-        /*int id =*/ insert(
+        insert(
                 INSERT_QUERY,
                 event.getTimestamp(),
                 event.getUserId(),
-                event.getEventType(),
-                event.getOperation(),
+                event.getEventType().name(),
+                event.getOperation().name(),
                 event.getEntityId()
         );
-        //event.setEventId(id);
     }
 
     @Override

@@ -8,6 +8,7 @@ import ru.yandex.practicum.filmorate.model.Operation;
 import ru.yandex.practicum.filmorate.storage.event.EventStorage;
 
 import java.time.Instant;
+import java.util.List;
 
 @Service
 public class EventService {
@@ -20,12 +21,16 @@ public class EventService {
 
     public void addEvent(Integer userId, EventType eventType, Operation operation, Integer entityId) {
         Event event = new Event();
-        event.setTimestamp(Instant.now().getEpochSecond());
+        event.setTimestamp(Instant.now().toEpochMilli());
         event.setUserId(userId);
         event.setEventType(eventType);
         event.setOperation(operation);
         event.setEntityId(entityId);
 
         eventStorage.addEvent(event);
+    }
+
+    public List<Event> getEvents(Integer userId) {
+        return eventStorage.getEvents(userId);
     }
 }
