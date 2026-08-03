@@ -10,9 +10,11 @@ import ru.yandex.practicum.filmorate.dto.UpdateFilmRequest;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.mapper.FilmMapper;
+import ru.yandex.practicum.filmorate.model.Director;
 import ru.yandex.practicum.filmorate.model.EventType;
 import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.model.Genre;
+import ru.yandex.practicum.filmorate.service.director.DirectorService;
 import ru.yandex.practicum.filmorate.model.Operation;
 import ru.yandex.practicum.filmorate.service.event.EventService;
 import ru.yandex.practicum.filmorate.service.genre.GenreService;
@@ -32,6 +34,7 @@ public class FilmService {
     private final UserService userService;
     private final GenreService genreService;
     private final MpaService mpaService;
+    private final DirectorService directorService;
     private final EventService eventService;
 
     private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
@@ -42,11 +45,13 @@ public class FilmService {
                        UserService userService,
                        GenreService genreService,
                        MpaService mpaService,
+                       DirectorService directorService,
                        EventService eventService) {
         this.filmStorage = filmStorage;
         this.userService = userService;
         this.genreService = genreService;
         this.mpaService = mpaService;
+        this.directorService = directorService;
         this.eventService = eventService;
     }
 
@@ -76,6 +81,11 @@ public class FilmService {
         }
         if (request.hasGenres()) {
             checkGenres(request.getGenres());
+        }
+        if (request.hasDirectors()) {
+            checkDirectors(request.getDirectors());
+        } else {
+            film.setDirectors(new ArrayList<>());
         }
         Film updatedFilm = FilmMapper.updateFilmFields(film, request);
 
@@ -158,5 +168,32 @@ public class FilmService {
             throw new NotFoundException("Фильм с id = " + filmId + " не найден");
         }
         return filmOptional.get();
+    }
+
+    private void checkDirectors(List<Director> directors) {
+        if (directors != null && !directors.isEmpty()) {
+            List<Director> directorsDb = directorService.getAllDirectors();
+            Set<Integer> uniqueIds = new HashSet<>();
+            for (Director director : directors) {
+                boolean exists = directorsDb.stream()
+                        .anyMatch(directorDb ->
+                                directorDb.getId() == director.getId()
+                        );
+
+                if (!exists) {
+                    throw new NotFoundException(
+                            "Режисер с id = " + director.getId() + " не найден"
+                    );
+                }
+            }
+            directors.removeIf(director ->
+                    !uniqueIds.add(director.getId())
+            );
+        }
+    }
+
+    public List<Film> getFilmsByDirector(Integer directorId, String sortBy) {
+        directorService.getDirector(directorId);
+        return filmStorage.getFilmsByDirector(directorId, sortBy);
     }
 }
