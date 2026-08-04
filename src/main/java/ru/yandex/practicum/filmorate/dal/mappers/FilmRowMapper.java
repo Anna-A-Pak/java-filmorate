@@ -1,5 +1,6 @@
 package ru.yandex.practicum.filmorate.dal.mappers;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Component;
 import ru.yandex.practicum.filmorate.model.Director;
@@ -13,6 +14,7 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
+@Slf4j
 @Component
 public class FilmRowMapper implements RowMapper<Film> {
 
@@ -40,7 +42,7 @@ public class FilmRowMapper implements RowMapper<Film> {
 				}
 			}
 		} catch (SQLException e) {
-			e.printStackTrace();
+			log.error("Sql exception", e);
 		}
 		film.setGenres(genres);
 		List<Director> directors = new ArrayList<>();
@@ -59,7 +61,7 @@ public class FilmRowMapper implements RowMapper<Film> {
 				}
 			}
 		} catch (SQLException e) {
-			e.printStackTrace();
+			log.error("Sql exception", e);
 		}
 		film.setDirectors(directors);
 		return film;
