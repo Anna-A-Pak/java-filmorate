@@ -3,6 +3,7 @@ package ru.yandex.practicum.filmorate.dal;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 import ru.yandex.practicum.filmorate.dal.mappers.ReviewRowMapper;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.model.Review;
@@ -141,49 +142,63 @@ public class ReviewDbStorage extends BaseStorage implements ReviewStorage {
     }
 
     @Override
+    @Transactional
     public void putLike(Integer id, Integer userId) {
-        if (getUserRating(id, userId).isEmpty()) {
+        Boolean rating = getUserRating(id, userId);
+        if (rating == null) {
             jdbc.update(INSERT_USERS_RATINGS, id, userId, true);
             jdbc.update(UPDATE_USEFUL, 1, id);
-        } else if (!getUserRating(id, userId).getFirst()) {
-            jdbc.update(UPDATE_USERS_RATINGS, id, userId, getUserRating(id, userId).getFirst());
+        } else if (!rating) {
+            jdbc.update(UPDATE_USERS_RATINGS, true, id, userId);
             jdbc.update(UPDATE_USEFUL, 2, id);
         }
     }
 
     @Override
+    @Transactional
     public void putDislike(Integer id, Integer userId) {
-        if (getUserRating(id, userId).isEmpty()) {
+        Boolean rating = getUserRating(id, userId);
+        if (rating == null) {
             jdbc.update(INSERT_USERS_RATINGS, id, userId, false);
             jdbc.update(UPDATE_USEFUL, -1, id);
-        } else if (getUserRating(id, userId).getFirst()) {
-            jdbc.update(UPDATE_USERS_RATINGS, id, userId, getUserRating(id, userId).getFirst());
+        } else if (rating) {
+            jdbc.update(UPDATE_USERS_RATINGS, false, id, userId);
             jdbc.update(UPDATE_USEFUL, -2, id);
         }
     }
 
     @Override
+    @Transactional
     public void deleteLike(Integer id, Integer userId) {
-        if (!getUserRating(id, userId).isEmpty() && getUserRating(id, userId).getFirst()) {
+        Boolean rating = getUserRating(id, userId);
+        if (rating != null && rating) {
             jdbc.update(DELETE_USERS_RATINGS, id, userId);
             jdbc.update(UPDATE_USEFUL, -1, id);
         }
     }
 
     @Override
+    @Transactional
     public void deleteDislike(Integer id, Integer userId) {
-        if (!getUserRating(id, userId).isEmpty() && !getUserRating(id, userId).getFirst()) {
+        Boolean rating = getUserRating(id, userId);
+        if (rating != null && !rating) {
             jdbc.update(DELETE_USERS_RATINGS, id, userId);
             jdbc.update(UPDATE_USEFUL, 1, id);
         }
     }
 
-    private List<Boolean> getUserRating(Integer id, Integer userId) {
-        return jdbc.query(
+    private Boolean getUserRating(Integer id, Integer userId) {
+        List<Boolean> rating = jdbc.query(
                 SELECT_RATING_QUERY,
                 (rs, rowNum) -> rs.getBoolean("is_positive"),
                 id,
                 userId
         );
+
+        if (rating.isEmpty()) {
+            return null;
+        }
+
+        return rating.getFirst();
     }
 }

@@ -4,13 +4,14 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import ru.yandex.practicum.filmorate.dto.NewUserRequest;
 import ru.yandex.practicum.filmorate.dto.UpdateUserRequest;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.mapper.UserMapper;
-import ru.yandex.practicum.filmorate.model.Film;
-import ru.yandex.practicum.filmorate.model.User;
+import ru.yandex.practicum.filmorate.model.*;
+import ru.yandex.practicum.filmorate.service.event.EventService;
 import ru.yandex.practicum.filmorate.storage.user.UserStorage;
 
 import java.time.LocalDate;
@@ -23,11 +24,14 @@ import java.util.Optional;
 public class UserService {
 
     private final UserStorage userStorage;
+    private final EventService eventService;
     private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
     @Autowired
-    public UserService(@Qualifier("userDbStorage") UserStorage userStorage) {
+    public UserService(@Qualifier("userDbStorage") UserStorage userStorage,
+                       EventService eventService) {
         this.userStorage = userStorage;
+        this.eventService = eventService;
     }
 
     public List<User> getAllUsers() {
@@ -57,18 +61,22 @@ public class UserService {
         userStorage.deleteUser(id);
     }
 
+    @Transactional
     public void addFriend(Integer userId, Integer friendId) {
         User user = getUser(userId);
         User friend = getUser(friendId);
 
         userStorage.addFriend(userId, friendId);
+        eventService.addEvent(userId, EventType.FRIEND, Operation.ADD, friendId);
     }
 
+    @Transactional
     public void deleteFriend(Integer userId, Integer friendId) {
         User user = getUser(userId);
         User friend = getUser(friendId);
 
         userStorage.deleteFriend(user, friend);
+        eventService.addEvent(userId, EventType.FRIEND, Operation.REMOVE, friendId);
     }
 
     public List<User> getAllFriends(Integer userId) {
@@ -85,6 +93,11 @@ public class UserService {
 
     public List<Film> getRecommendations(Integer id) {
         return userStorage.getRecommendations(id);
+    }
+
+    public List<Event> getEvents(Integer userId) {
+        getUser(userId);
+        return eventService.getEvents(userId);
     }
 
     private void checkFields(User user) {
