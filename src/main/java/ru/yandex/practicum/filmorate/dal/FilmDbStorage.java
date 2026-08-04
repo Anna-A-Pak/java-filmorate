@@ -240,9 +240,36 @@ public class FilmDbStorage extends BaseStorage implements FilmStorage {
 			JOIN films_directors fd ON d.director_id = fd.director_id
 			WHERE fd.film_id = ?""";
 
-	public List<Film> getAllMovies() {
-		return jdbc.query(GET_ALL_QUERY, mapper);
-	}
+	private static final String GET_SEARCHING_FILMS = """
+    SELECT f.*,
+           m.mpa_name,
+           array_agg(DISTINCT g.genre_id ORDER BY g.genre_id)
+            FILTER (WHERE g.genre_id IS NOT NULL) AS genre_id,
+           array_agg(DISTINCT g.genre_name ORDER BY g.genre_id)
+            FILTER (WHERE g.genre_id IS NOT NULL) AS genre_name,
+           array_agg(DISTINCT d.director_id ORDER BY d.director_id)
+            FILTER (WHERE d.director_id IS NOT NULL) AS director_id,
+           array_agg(DISTINCT d.director_name ORDER BY d.director_id)
+            FILTER (WHERE d.director_id IS NOT NULL) AS director_name
+    FROM films AS f
+    JOIN mpa AS m ON f.mpa_id = m.mpa_id
+    LEFT JOIN films_genres AS fg ON fg.film_id = f.film_id
+    LEFT JOIN genres AS g ON g.genre_id = fg.genre_id
+    LEFT JOIN films_directors AS fd ON fd.film_id = f.film_id
+    LEFT JOIN directors AS d ON d.director_id = fd.director_id
+    LEFT JOIN (
+        SELECT film_id, COUNT(*) AS likes_count
+        FROM films_likes
+        GROUP BY film_id
+    ) AS fl ON fl.film_id = f.film_id
+    WHERE (? = TRUE AND LOWER(f.film_name) LIKE CONCAT('%', LOWER(?), '%'))
+       OR (? = TRUE AND LOWER(d.director_name) LIKE CONCAT('%', LOWER(?), '%'))
+    GROUP BY f.film_id, m.mpa_id, fl.likes_count
+    ORDER BY COALESCE(fl.likes_count, 0) DESC, f.film_id""";
+
+    public List<Film> getAllMovies() {
+        return jdbc.query(GET_ALL_QUERY, mapper);
+    }
 
 	@Transactional
 	public Film addFilm(Film film) {
@@ -337,6 +364,7 @@ public class FilmDbStorage extends BaseStorage implements FilmStorage {
 		if (film.getDirectors() == null || film.getDirectors().isEmpty()) {
 			return;
 		}
+
 		jdbc.batchUpdate(
 				INSERT_FILMS_DIRECTORS_QUERY,
 				film.getDirectors(),
@@ -355,5 +383,15 @@ public class FilmDbStorage extends BaseStorage implements FilmStorage {
 
 	private void deleteFilmDirectors(Integer filmId) {
 		jdbc.update(DELETE_FILMS_DIRECTORS, filmId);
+	}
+
+	@Override
+	public List<Film> searchFilms(String query, String by) {
+		boolean searchTitle = by.contains("title");
+		boolean searchDirector = by.contains("director");
+		if (!searchTitle && !searchDirector) {
+			return List.of();
+		}
+		return jdbc.query(GET_SEARCHING_FILMS, mapper, searchTitle, query, searchDirector, query);
 	}
 }

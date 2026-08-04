@@ -192,8 +192,13 @@ public class FilmService {
         }
     }
 
-    public List<Film> getFilmsByDirector(Integer directorId, String sortBy) {
-        directorService.getDirector(directorId);
-        return filmStorage.getFilmsByDirector(directorId, sortBy);
+	public List<Film> getFilmsByDirector(Integer directorId, String sortBy) {
+		directorService.getDirector(directorId);
+		return filmStorage.getFilmsByDirector(directorId, sortBy);
+	}
+
+    public List<Film> searchFilms(String title, String by) {
+        log.debug("Searshing movies");
+        return filmStorage.searchFilms(title, by);
     }
 }
