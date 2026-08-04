@@ -97,10 +97,14 @@ public class FilmDbStorage extends BaseStorage implements FilmStorage {
 			  film_id = ?""";
 
 	private static final String INSERT_LIKES_QUERY = """
-			INSERT INTO
-			  films_likes (film_id, user_id)
-			VALUES
-			  (?, ?)""";
+			INSERT INTO films_likes (film_id, user_id)
+			SELECT ?, ?
+			WHERE NOT EXISTS (
+			    SELECT 1
+			    FROM films_likes
+			    WHERE film_id = ?
+			      AND user_id = ?
+			)""";
 
 	private static final String DELETE_LIKES_QUERY = """
 			DELETE FROM films_likes
@@ -343,7 +347,7 @@ public class FilmDbStorage extends BaseStorage implements FilmStorage {
 	}
 
 	public void addLike(Integer filmId, Integer userId) {
-		jdbc.update(INSERT_LIKES_QUERY, filmId, userId);
+		jdbc.update(INSERT_LIKES_QUERY, filmId, userId, filmId, userId);
 	}
 
 	public void deleteLike(Integer filmId, Integer userId) {
