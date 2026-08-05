@@ -200,7 +200,7 @@ public class FilmService {
 	}
 
     public List<Film> searchFilms(String title, String by) {
-        log.debug("Searshing movies");
+        log.debug("Searching movies");
         return filmStorage.searchFilms(title, by);
     }
 }
