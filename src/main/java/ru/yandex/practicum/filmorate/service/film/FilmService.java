@@ -120,6 +120,8 @@ public class FilmService {
     }
 
     public List<Film> getCommonFilms(Integer userId, Integer friendId) {
+        userService.getUser(userId);
+        userService.getUser(friendId);
         return filmStorage.getCommonFilms(userId, friendId);
     }
 
