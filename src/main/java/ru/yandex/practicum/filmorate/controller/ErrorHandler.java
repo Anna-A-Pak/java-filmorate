@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
 
+
 @RestControllerAdvice
 public class ErrorHandler {
     @ResponseStatus(HttpStatus.NOT_FOUND)

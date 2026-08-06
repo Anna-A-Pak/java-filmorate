@@ -4,13 +4,19 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import ru.yandex.practicum.filmorate.dto.NewFilmRequest;
 import ru.yandex.practicum.filmorate.dto.UpdateFilmRequest;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.mapper.FilmMapper;
+import ru.yandex.practicum.filmorate.model.Director;
+import ru.yandex.practicum.filmorate.model.EventType;
 import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.model.Genre;
+import ru.yandex.practicum.filmorate.service.director.DirectorService;
+import ru.yandex.practicum.filmorate.model.Operation;
+import ru.yandex.practicum.filmorate.service.event.EventService;
 import ru.yandex.practicum.filmorate.service.genre.GenreService;
 import ru.yandex.practicum.filmorate.service.mpa.MpaService;
 import ru.yandex.practicum.filmorate.service.user.UserService;
@@ -28,6 +34,8 @@ public class FilmService {
     private final UserService userService;
     private final GenreService genreService;
     private final MpaService mpaService;
+    private final DirectorService directorService;
+    private final EventService eventService;
 
     private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private static final LocalDate MIN_RELEASE_DATE = LocalDate.parse("1895-12-28");
@@ -36,11 +44,15 @@ public class FilmService {
     public FilmService(@Qualifier("filmDbStorage") FilmStorage filmStorage,
                        UserService userService,
                        GenreService genreService,
-                       MpaService mpaService) {
+                       MpaService mpaService,
+                       DirectorService directorService,
+                       EventService eventService) {
         this.filmStorage = filmStorage;
         this.userService = userService;
         this.genreService = genreService;
         this.mpaService = mpaService;
+        this.directorService = directorService;
+        this.eventService = eventService;
     }
 
     public List<Film> getAllMovies() {
@@ -70,6 +82,11 @@ public class FilmService {
         if (request.hasGenres()) {
             checkGenres(request.getGenres());
         }
+        if (request.hasDirectors()) {
+            checkDirectors(request.getDirectors());
+        } else {
+            film.setDirectors(new ArrayList<>());
+        }
         Film updatedFilm = FilmMapper.updateFilmFields(film, request);
 
         return filmStorage.update(updatedFilm);
@@ -79,23 +96,33 @@ public class FilmService {
         filmStorage.deleteFilm(id);
     }
 
+    @Transactional
     public void addLike(Integer filmId, Integer userId) {
         getFilm(filmId);
         userService.getUser(userId);
         filmStorage.addLike(filmId, userId);
+        eventService.addEvent(userId, EventType.LIKE, Operation.ADD, filmId);
         log.debug("User {} liked the film {}", userId, filmId);
     }
 
+    @Transactional
     public void deleteLike(Integer filmId, Integer userId) {
         getFilm(filmId);
         userService.getUser(userId);
         filmStorage.deleteLike(filmId, userId);
+        eventService.addEvent(userId, EventType.LIKE, Operation.REMOVE, filmId);
         log.debug("User {} deleted the like for the film {}", userId, filmId);
     }
 
-    public List<Film> getPopularFilms(int count) {
-        log.debug("Sorting movies by popularity");
-        return filmStorage.getPopularFilms(count);
+    public List<Film> getPopularFilms(int count, Integer genreId, Integer year) {
+        log.debug("Sorting movies by popularity, genreId={}, year={}", genreId, year);
+        return filmStorage.getPopularFilms(count, genreId, year);
+    }
+
+    public List<Film> getCommonFilms(Integer userId, Integer friendId) {
+        userService.getUser(userId);
+        userService.getUser(friendId);
+        return filmStorage.getCommonFilms(userId, friendId);
     }
 
     private void checkFields(Film film) {
@@ -143,5 +170,37 @@ public class FilmService {
             throw new NotFoundException("Фильм с id = " + filmId + " не найден");
         }
         return filmOptional.get();
+    }
+
+    private void checkDirectors(List<Director> directors) {
+        if (directors != null && !directors.isEmpty()) {
+            List<Director> directorsDb = directorService.getAllDirectors();
+            Set<Integer> uniqueIds = new HashSet<>();
+            for (Director director : directors) {
+                boolean exists = directorsDb.stream()
+                        .anyMatch(directorDb ->
+                                directorDb.getId() == director.getId()
+                        );
+
+                if (!exists) {
+                    throw new NotFoundException(
+                            "Режисер с id = " + director.getId() + " не найден"
+                    );
+                }
+            }
+            directors.removeIf(director ->
+                    !uniqueIds.add(director.getId())
+            );
+        }
+    }
+
+	public List<Film> getFilmsByDirector(Integer directorId, String sortBy) {
+		directorService.getDirector(directorId);
+		return filmStorage.getFilmsByDirector(directorId, sortBy);
+	}
+
+    public List<Film> searchFilms(String title, String by) {
+        log.debug("Searching movies");
+        return filmStorage.searchFilms(title, by);
     }
 }
